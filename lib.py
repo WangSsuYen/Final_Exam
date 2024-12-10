@@ -1,5 +1,7 @@
-import os, sqlite3
+import os, sqlite3, requests
 from typing import List, Union, Optional, Dict
+from bs4 import BeautifulSoup
+
 
 
 class WordDatas:
@@ -301,3 +303,72 @@ class ArticleData:
 
         finally:
             conn.close()
+
+
+class DataCrawl:
+    """
+    網頁爬蟲
+    """
+    def __init__(self, search_key):
+        self.url = f"https://dictionary.cambridge.org/zht/詞典/英語-漢語-繁體/{search_key}"
+        self.headword = None
+        self.part_of_speech = None
+        self.definitions = []
+        self.examples_en = []
+        self.examples_zh = []
+        self.translations = []
+
+
+    def crawl(self):
+        # 發送請求
+        response = requests.get(self.url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # 1. 爬取 <span class="hw dhw">headword</span>
+        self.headword = soup.find('span', class_='hw dhw').text
+
+        # 2. 爬取 <span class="pos dpos" title="A word that refers to a person, place, idea, event or thing.">noun</span>
+        self.part_of_speech = soup.find('span', class_='pos dpos').text
+
+        # 3. 遍歷所有定義區塊（每個定義和範例句子可能有多個）
+        for def_block in soup.find_all('div', class_='def ddef_d db'):
+            # 抓取每個定義的文本
+            definition_text = def_block.text.strip()
+            self.definitions.append(definition_text)
+
+            # 查找對應的英文範例句子
+            example_block = def_block.find_next('div', class_='examp dexamp')  # 找到範例句子區塊
+            if example_block:
+                # 可能有多個範例句
+                for example in example_block.find_all('span', class_='eg deg'):
+                    self.examples_en.append(example.text.strip())
+
+            # 查找對應的中文範例句子
+            chinese_example_block = def_block.find_next('div', class_='examp dexamp')  # 可能在同一個區塊
+            if chinese_example_block:
+                for example in chinese_example_block.find_all('span', class_='trans dtrans'):
+                    self.examples_zh.append(example.text.strip())
+
+        # 4. 爬取翻譯
+        for trans in soup.find_all('span', class_='dtrans'):
+            self.translations.append(trans.text.strip())
+
+        # 返回字典
+        return self.to_dict()
+
+
+    def to_dict(self):
+        """
+        將爬取的資料轉換為字典格式
+        """
+        data = {
+            'headword': self.headword,
+            'part_of_speech': self.part_of_speech,
+            'definitions': self.definitions,
+            'examples': {
+                'english': self.examples_en,
+                'chinese': self.examples_zh
+            },
+            'translations': self.translations
+        }
+        return data
