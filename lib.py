@@ -1,4 +1,4 @@
-import os, sqlite3, requests
+import os, sqlite3, requests, json
 from typing import List, Union, Optional, Dict
 from bs4 import BeautifulSoup
 
@@ -320,42 +320,48 @@ class DataCrawl:
 
 
     def crawl(self):
-        # 發送請求
-        response = requests.get(self.url)
+        headers = {'User-Agent': 'Mozilla/5.0'} #反爬蟲機制
+        response = requests.get(self.url, headers=headers)
         soup = BeautifulSoup(response.text, 'html.parser')
 
         # 1. 爬取 <span class="hw dhw">headword</span>
         self.headword = soup.find('span', class_='hw dhw').text
 
         # 2. 爬取 <span class="pos dpos" title="A word that refers to a person, place, idea, event or thing.">noun</span>
-        self.part_of_speech = soup.find('span', class_='pos dpos').text
+        self.block = [block.text for block in soup.find_all('div', class_='pr entry-body__el')]
 
-        # 3. 遍歷所有定義區塊（每個定義和範例句子可能有多個）
-        for def_block in soup.find_all('div', class_='def ddef_d db'):
-            # 抓取每個定義的文本
-            definition_text = def_block.text.strip()
-            self.definitions.append(definition_text)
+        # # 3. 遍歷所有定義區塊（每個定義和範例句子可能有多個）
+        # for def_block in soup.find_all('div', class_='def ddef_d db'):
+        #     # 抓取每個定義的文本
+        #     definition_text = def_block.text.strip()
+        #     self.definitions.append(definition_text)
 
-            # 查找對應的英文範例句子
-            example_block = def_block.find_next('div', class_='examp dexamp')  # 找到範例句子區塊
-            if example_block:
-                # 可能有多個範例句
-                for example in example_block.find_all('span', class_='eg deg'):
-                    self.examples_en.append(example.text.strip())
+        #     # 查找對應的英文範例句子
+        #     example_block = def_block.find_next('div', class_='examp dexamp')  # 找到範例句子區塊
+        #     if example_block:
+        #         # 可能有多個範例句
+        #         for example in example_block.find_all('span', class_='eg deg'):
+        #             self.examples_en.append(example.text.strip())
 
-            # 查找對應的中文範例句子
-            chinese_example_block = def_block.find_next('div', class_='examp dexamp')  # 可能在同一個區塊
-            if chinese_example_block:
-                for example in chinese_example_block.find_all('span', class_='trans dtrans'):
-                    self.examples_zh.append(example.text.strip())
+        #     # 查找對應的中文範例句子
+        #     chinese_example_block = def_block.find_next('div', class_='examp dexamp')  # 可能在同一個區塊
+        #     if chinese_example_block:
+        #         for example in chinese_example_block.find_all('span', class_='trans dtrans'):
+        #             self.examples_zh.append(example.text.strip())
 
-        # 4. 爬取翻譯
-        for trans in soup.find_all('span', class_='dtrans'):
-            self.translations.append(trans.text.strip())
+        # # 4. 爬取翻譯
+        # for trans in soup.find_all('span', class_='dtrans'):
+        #     self.translations.append(trans.text.strip())
 
-        # 返回字典
-        return self.to_dict()
 
+        # ----------------------拋出josn測試----------------------------
+        data = {'title': str(self.block)}
+        json_data = json.dumps(data, ensure_ascii=False, indent=4)
+        with open('output.json', 'w', encoding='utf-8') as f:
+            f.write(json_data)
+        # --------------------------------------------------------------
+
+        return
 
     def to_dict(self):
         """
