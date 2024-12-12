@@ -311,70 +311,88 @@ class DataCrawl:
     """
     def __init__(self, search_key):
         self.url = f"https://dictionary.cambridge.org/zht/詞典/英語-漢語-繁體/{search_key}"
-        self.headword = None
-        self.part_of_speech = None
-        self.definitions = []
-        self.examples_en = []
-        self.examples_zh = []
-        self.translations = []
+        self.word = {}
 
 
     def crawl(self):
-        headers = {'User-Agent': 'Mozilla/5.0'} #反爬蟲機制
+        headers = {'User-Agent': 'Mozilla/5.0'}  # 反爬蟲機制
         response = requests.get(self.url, headers=headers)
         soup = BeautifulSoup(response.text, 'html.parser')
 
         # 1. 爬取 <span class="hw dhw">headword</span>
-        self.headword = soup.find('span', class_='hw dhw').text
+        headword = soup.find('span', class_='hw dhw').text if soup.find('span', class_='hw dhw') else None
 
-        # 2. 爬取 <span class="pos dpos" title="A word that refers to a person, place, idea, event or thing.">noun</span>
-        self.block = [block.text for block in soup.find_all('div', class_='pr entry-body__el')]
+        # 初始化區塊索引
+        block_index = 1
+        # 區塊
+        blocks = {}
 
-        # # 3. 遍歷所有定義區塊（每個定義和範例句子可能有多個）
-        # for def_block in soup.find_all('div', class_='def ddef_d db'):
-        #     # 抓取每個定義的文本
-        #     definition_text = def_block.text.strip()
-        #     self.definitions.append(definition_text)
+        # 2. 爬取每個區塊的資料
+        for block in soup.find_all('div', class_='pr entry-body__el'):
+            if len(block.find_all('div', class_='pr dsense')) >= 2:
+                for sub_block in block.find_all('div', class_='pr dsense'):
+                    block_data = {}
 
-        #     # 查找對應的英文範例句子
-        #     example_block = def_block.find_next('div', class_='examp dexamp')  # 找到範例句子區塊
-        #     if example_block:
-        #         # 可能有多個範例句
-        #         for example in example_block.find_all('span', class_='eg deg'):
-        #             self.examples_en.append(example.text.strip())
+                    # 詞類
+                    word_class = sub_block.find('span', class_='pos dsense_pos')
+                    block_data['word_class'] = word_class.text if word_class else 'N/A'
 
-        #     # 查找對應的中文範例句子
-        #     chinese_example_block = def_block.find_next('div', class_='examp dexamp')  # 可能在同一個區塊
-        #     if chinese_example_block:
-        #         for example in chinese_example_block.find_all('span', class_='trans dtrans'):
-        #             self.examples_zh.append(example.text.strip())
+                    # 描述
+                    description = sub_block.find('div', class_='def ddef_d db')
+                    block_data['description'] = description.text if description else 'N/A'
 
-        # # 4. 爬取翻譯
-        # for trans in soup.find_all('span', class_='dtrans'):
-        #     self.translations.append(trans.text.strip())
+                    # 單字翻譯
+                    word_translation = sub_block.find('span', class_='dtrans')
+                    block_data['word_trandition'] = word_translation.text if word_translation else 'N/A'
+
+                    # 例句
+                    example_sentence = sub_block.find('span', class_='eg deg')
+                    block_data['example_sentence'] = example_sentence.text if example_sentence else 'N/A'
+
+                    # 例句翻譯
+                    example_sentence_translation = sub_block.find('span', class_='trans dtrans dtrans-se hdb break-cj')
+                    block_data['example_sentence_trandition'] = example_sentence_translation.text if example_sentence_translation else 'N/A'
+
+                    # 將資料加入到 blocks 字典
+                    blocks[f'block{block_index}'] = block_data
+                    block_index += 1
+
+            else:
+                for sub_block in block.find_all('div', class_='pr dsense'):
+                    block_data = {}
+
+                    # 詞類
+                    word_class = sub_block.find('span', class_='pos dpos')
+                    block_data['word_class'] = word_class.text if word_class else 'N/A'
+
+                    # 描述
+                    description = sub_block.find('div', class_='def ddef_d db')
+                    block_data['description'] = description.text if description else 'N/A'
+
+                    # 單字翻譯
+                    word_translation = sub_block.find('span', class_='dtrans')
+                    block_data['word_trandition'] = word_translation.text if word_translation else 'N/A'
+
+                    # 例句
+                    example_sentence = sub_block.find('span', class_='eg deg')
+                    block_data['example_sentence'] = example_sentence.text if example_sentence else 'N/A'
+
+                    # 例句翻譯
+                    example_sentence_translation = sub_block.find('span', class_='trans dtrans dtrans-se hdb break-cj')
+                    block_data['example_sentence_trandition'] = example_sentence_translation.text if example_sentence_translation else 'N/A'
+
+                    # 將資料加入到 blocks 字典
+                    blocks[f'block{block_index}'] = block_data
+                    block_index += 1
 
 
-        # ----------------------拋出josn測試----------------------------
-        data = {'title': str(self.block)}
-        json_data = json.dumps(data, ensure_ascii=False, indent=4)
-        with open('output.json', 'w', encoding='utf-8') as f:
-            f.write(json_data)
-        # --------------------------------------------------------------
+        self.word[headword] = blocks
+        print(self.word)
+
+        # ----------------------持續追加 JSON 測試----------------------------
+        output_path = os.path.join(os.getcwd(), 'output.json')
+        with open(output_path, 'a', encoding='utf-8') as f:
+            f.write(json.dumps({headword: blocks}, ensure_ascii=False, indent=4) + '\n')
+        # ------------------------------------------------------------------
 
         return
-
-    def to_dict(self):
-        """
-        將爬取的資料轉換為字典格式
-        """
-        data = {
-            'headword': self.headword,
-            'part_of_speech': self.part_of_speech,
-            'definitions': self.definitions,
-            'examples': {
-                'english': self.examples_en,
-                'chinese': self.examples_zh
-            },
-            'translations': self.translations
-        }
-        return data
