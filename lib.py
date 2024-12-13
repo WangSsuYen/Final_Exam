@@ -24,11 +24,8 @@ class WordDatas:
                 cur.execute('''CREATE TABLE IF NOT EXISTS Word (
                                 ID INTEGER PRIMARY KEY AUTOINCREMENT,
                                 english_word TEXT NOT NULL UNIQUE,
-                                word_class TEXT NOT NULL,
-                                chinese_translation TEXT NOT NULL,
-                                word_description TEXT NOT NULL,
-                                example_sentence TEXT,
-                                example_sentence_translation TEXT  );''')
+                                description TEXT NOT NULL
+                              );''')
                 conn.commit()
                 return ["Success", "٩(⚙ᴗ⚙)۶ 資料庫建立完成"]
 
@@ -74,11 +71,7 @@ class WordDatas:
         try:
             conn = sqlite3.connect(db)
             cur = conn.cursor()
-            cur.execute('''INSERT INTO Word (english_word, word_class, chinese_translation, word_description,
-                            example_sentence, example_sentence_translation)
-                            VALUES (?, ?, ?, ?, ?, ?)''',
-                        (data["english_word"], data["word_class"], data["chinese_translation"],
-                         data["word_description"], data["example_sentence"], data["example_sentence_translation"]))
+            cur.execute('''INSERT INTO Word (english_word, description) VALUES (?, ?)''',(data["english_word"], data['description']))
             conn.commit()
             return ["Success", f"٩(⚙ᴗ⚙)۶ {data['english_word']} 已成功加入資料庫！"]
 
@@ -132,23 +125,13 @@ class WordDatas:
 
         # 更新資料時保留未修改的值
         existing_data = WordDatas.search_data(db, english_word)
-        updated_fields = {
-            "word_class": updated_data.get("word_class", existing_data["word_class"]),
-            "chinese_translation": updated_data.get("chinese_translation", existing_data["chinese_translation"]),
-            "word_description": updated_data.get("word_description", existing_data["word_description"]),
-            "example_sentence": updated_data.get("example_sentence", existing_data["example_sentence"]),
-            "example_sentence_translation": updated_data.get("example_sentence_translation",
-                                                             existing_data["example_sentence_translation"]),
-        }
+        updated_fields = {"description": updated_data.get("description", existing_data["description"])}
 
         try:
             conn = sqlite3.connect(db)
             cur = conn.cursor()
-            cur.execute('''UPDATE Word SET word_class = ?, chinese_translation = ?, word_description = ?,
-                            example_sentence = ?, example_sentence_translation = ? WHERE english_word = ?;''',
-                        (updated_fields["word_class"], updated_fields["chinese_translation"],
-                         updated_fields["word_description"], updated_fields["example_sentence"],
-                         updated_fields["example_sentence_translation"], english_word))
+            cur.execute('''UPDATE Word SET description = ? WHERE english_word = ?;''',
+                        (updated_fields["description"], english_word))
             conn.commit()
             return ["Success", f"٩(⚙ᴗ⚙)۶ {english_word} 已更新！"]
 
@@ -324,17 +307,48 @@ class DataCrawl:
 
         # 初始化區塊索引
         block_index = 1
+        phrase_index = 1
         # 區塊
         blocks = {}
 
         # 2. 爬取每個區塊的資料
         for block in soup.find_all('div', class_='pr entry-body__el'):
-            if len(block.find_all('div', class_='pr dsense')) >= 2:
-                for sub_block in block.find_all('div', class_='pr dsense'):
-                    block_data = {}
+        # 預抓詞類
+            word_class = block.find('span', class_='pos dpos')
 
+            for sub_block in block.find_all('div', class_='def-block ddef_block'):
+                block_data = {}
+                phrase_block = {}
+
+                # 片語
+                parent_block = sub_block.find_parent('div', class_=['pr phrase-block dphrase-block lmb-25', "pr phrase-block dphrase-block"])
+                if parent_block:
+
+                    # 片語
+                    phrase_title = parent_block.find('span', class_='phrase-title dphrase-title')
+                    phrase_block['phrase'] = phrase_title.text if phrase_title else 'N/A'
+
+                    # 片語描述
+                    description = sub_block.find('div', class_='def ddef_d db')
+                    phrase_block['description'] = description.text if description else 'N/A'
+
+                    # 片語翻譯
+                    word_translation = sub_block.find('span', class_='dtrans')
+                    phrase_block['word_translation'] = word_translation.text if word_translation else 'N/A'
+
+                    # 片語例句
+                    example_sentence = sub_block.find('span', class_='eg deg')
+                    phrase_block['example_sentence'] = example_sentence.text if example_sentence else 'N/A'
+
+                    # 片語例句翻譯
+                    example_sentence_translation = sub_block.find('span', class_='trans dtrans dtrans-se hdb break-cj')
+                    phrase_block['example_sentence_translation'] = example_sentence_translation.text if example_sentence_translation else 'N/A'
+
+                    blocks[f'phrase{phrase_index}'] = phrase_block
+                    phrase_index += 1
+
+                else:
                     # 詞類
-                    word_class = sub_block.find('span', class_='pos dsense_pos')
                     block_data['word_class'] = word_class.text if word_class else 'N/A'
 
                     # 描述
@@ -343,7 +357,7 @@ class DataCrawl:
 
                     # 單字翻譯
                     word_translation = sub_block.find('span', class_='dtrans')
-                    block_data['word_trandition'] = word_translation.text if word_translation else 'N/A'
+                    block_data['word_translation'] = word_translation.text if word_translation else 'N/A'
 
                     # 例句
                     example_sentence = sub_block.find('span', class_='eg deg')
@@ -351,43 +365,15 @@ class DataCrawl:
 
                     # 例句翻譯
                     example_sentence_translation = sub_block.find('span', class_='trans dtrans dtrans-se hdb break-cj')
-                    block_data['example_sentence_trandition'] = example_sentence_translation.text if example_sentence_translation else 'N/A'
+                    block_data['example_sentence_translation'] = example_sentence_translation.text if example_sentence_translation else 'N/A'
 
                     # 將資料加入到 blocks 字典
                     blocks[f'block{block_index}'] = block_data
                     block_index += 1
-
-            else:
-                for sub_block in block.find_all('div', class_='pr dsense'):
-                    block_data = {}
-
-                    # 詞類
-                    word_class = sub_block.find('span', class_='pos dpos')
-                    block_data['word_class'] = word_class.text if word_class else 'N/A'
-
-                    # 描述
-                    description = sub_block.find('div', class_='def ddef_d db')
-                    block_data['description'] = description.text if description else 'N/A'
-
-                    # 單字翻譯
-                    word_translation = sub_block.find('span', class_='dtrans')
-                    block_data['word_trandition'] = word_translation.text if word_translation else 'N/A'
-
-                    # 例句
-                    example_sentence = sub_block.find('span', class_='eg deg')
-                    block_data['example_sentence'] = example_sentence.text if example_sentence else 'N/A'
-
-                    # 例句翻譯
-                    example_sentence_translation = sub_block.find('span', class_='trans dtrans dtrans-se hdb break-cj')
-                    block_data['example_sentence_trandition'] = example_sentence_translation.text if example_sentence_translation else 'N/A'
-
-                    # 將資料加入到 blocks 字典
-                    blocks[f'block{block_index}'] = block_data
-                    block_index += 1
-
 
         self.word[headword] = blocks
         print(self.word)
+
 
         # ----------------------持續追加 JSON 測試----------------------------
         output_path = os.path.join(os.getcwd(), 'output.json')
@@ -395,4 +381,4 @@ class DataCrawl:
             f.write(json.dumps({headword: blocks}, ensure_ascii=False, indent=4) + '\n')
         # ------------------------------------------------------------------
 
-        return
+        return self.word
