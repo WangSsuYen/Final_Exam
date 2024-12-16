@@ -297,6 +297,32 @@ class DataCrawl:
         self.word = {}
 
 
+    def bubble_sort_phrases(dictionary: dict, parent_key: str):
+        """
+        使用氣泡排序將指定字典中，以 `phrase` 開頭的鍵移到所有其他鍵的後方。
+
+        :param dictionary: 原始包含數據的字典。
+        :param parent_key: 要排序的子字典的主鍵名稱。
+        :return: 經過排序的字典。
+        """
+        # 提取目標子字典中的所有鍵
+        keys = list(dictionary[parent_key].keys())
+
+        # 氣泡排序：將以 'phrase' 開頭的鍵移動到末尾
+        for i in range(len(keys)):
+            for j in range(len(keys) - i - 1):
+                if keys[j].startswith('phrase') and not keys[j + 1].startswith('phrase'):
+                    keys[j], keys[j + 1] = keys[j + 1], keys[j]
+
+        # 按排序後的鍵順序重建子字典
+        sorted_sub_dict = {key: dictionary[parent_key][key] for key in keys}
+
+        # 更新主字典中的子字典
+        dictionary[parent_key] = sorted_sub_dict
+        return dictionary
+
+
+
     def crawl(self):
         headers = {'User-Agent': 'Mozilla/5.0'}  # 反爬蟲機制
         response = requests.get(self.url, headers=headers)
@@ -372,7 +398,9 @@ class DataCrawl:
                     block_index += 1
 
         self.word[headword] = blocks
-        print(self.word)
+
+        # 調用方法進行排序
+        sorted_regular = DataCrawl.bubble_sort_phrases(self.word, headword)
 
 
         # ----------------------持續追加 JSON 測試----------------------------
@@ -382,3 +410,7 @@ class DataCrawl:
         # ------------------------------------------------------------------
 
         return self.word
+
+
+
+
