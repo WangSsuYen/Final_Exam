@@ -294,6 +294,7 @@ class DataCrawl:
     """
     def __init__(self, search_key):
         self.url = f"https://dictionary.cambridge.org/zht/詞典/英語-漢語-繁體/{search_key}"
+        self.search_key = search_key
         self.word = {}
 
 
@@ -324,92 +325,109 @@ class DataCrawl:
 
 
     def crawl(self):
-        headers = {'User-Agent': 'Mozilla/5.0'}  # 反爬蟲機制
+        headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'Connection': 'keep-alive'
+                }  # 反爬蟲機制
         response = requests.get(self.url, headers=headers)
         soup = BeautifulSoup(response.text, 'html.parser')
+        # # ----------------------持續追加 JSON 測試----------------------------
+        # output_path = os.path.join(os.getcwd(), 'soup.json')
+        # with open(output_path, 'w', encoding='utf-8') as f:
+        #     # 使用 prettify() 轉換為可讀的 HTML 字串
+        #     soup_data = {"html": soup.prettify()}
+        #     f.write(json.dumps(soup_data, ensure_ascii=False, indent=4))
+        # # ------------------------------------------------------------------
 
-        # 1. 爬取 <span class="hw dhw">headword</span>
-        headword = soup.find('span', class_='hw dhw').text if soup.find('span', class_='hw dhw') else None
-
-        # 初始化區塊索引
-        block_index = 1
-        phrase_index = 1
         # 區塊
         blocks = {}
 
         # 2. 爬取每個區塊的資料
-        for block in soup.find_all('div', class_='pr entry-body__el'):
-        # 預抓詞類
-            word_class = block.find('span', class_='pos dpos')
+        if soup.find_all('div', class_='pr entry-body__el'):
+            # 抓取單字
+            headword = soup.find('span', class_='hw dhw').text if soup.find('span', class_='hw dhw') else None
+            # 初始化區塊索引
+            block_index = 1
+            phrase_index = 1
 
-            for sub_block in block.find_all('div', class_='def-block ddef_block'):
-                block_data = {}
-                phrase_block = {}
+            for block in soup.find_all('div', class_='pr entry-body__el'):
+            # 預抓詞類
+                word_class = block.find('span', class_='pos dpos')
 
-                # 片語
-                parent_block = sub_block.find_parent('div', class_=['pr phrase-block dphrase-block lmb-25', "pr phrase-block dphrase-block"])
-                if parent_block:
+                for sub_block in block.find_all('div', class_='def-block ddef_block'):
+                    block_data = {}
+                    phrase_block = {}
 
                     # 片語
-                    phrase_title = parent_block.find('span', class_='phrase-title dphrase-title')
-                    phrase_block['phrase'] = phrase_title.text if phrase_title else 'N/A'
+                    parent_block = sub_block.find_parent('div', class_=['pr phrase-block dphrase-block lmb-25', "pr phrase-block dphrase-block"])
+                    if parent_block:
 
-                    # 片語描述
-                    description = sub_block.find('div', class_='def ddef_d db')
-                    phrase_block['description'] = description.text if description else 'N/A'
+                        # 片語
+                        phrase_title = parent_block.find('span', class_='phrase-title dphrase-title')
+                        phrase_block['phrase'] = phrase_title.text if phrase_title else 'N/A'
 
-                    # 片語翻譯
-                    word_translation = sub_block.find('span', class_='dtrans')
-                    phrase_block['word_translation'] = word_translation.text if word_translation else 'N/A'
+                        # 片語描述
+                        description = sub_block.find('div', class_='def ddef_d db')
+                        phrase_block['description'] = description.text if description else 'N/A'
 
-                    # 片語例句
-                    example_sentence = sub_block.find('span', class_='eg deg')
-                    phrase_block['example_sentence'] = example_sentence.text if example_sentence else 'N/A'
+                        # 片語翻譯
+                        word_translation = sub_block.find('span', class_='dtrans')
+                        phrase_block['word_translation'] = word_translation.text if word_translation else 'N/A'
 
-                    # 片語例句翻譯
-                    example_sentence_translation = sub_block.find('span', class_='trans dtrans dtrans-se hdb break-cj')
-                    phrase_block['example_sentence_translation'] = example_sentence_translation.text if example_sentence_translation else 'N/A'
+                        # 片語例句
+                        example_sentence = sub_block.find('span', class_='eg deg')
+                        phrase_block['example_sentence'] = example_sentence.text if example_sentence else 'N/A'
 
-                    blocks[f'phrase{phrase_index}'] = phrase_block
-                    phrase_index += 1
+                        # 片語例句翻譯
+                        example_sentence_translation = sub_block.find('span', class_='trans dtrans dtrans-se hdb break-cj')
+                        phrase_block['example_sentence_translation'] = example_sentence_translation.text if example_sentence_translation else 'N/A'
 
-                else:
-                    # 詞類
-                    block_data['word_class'] = word_class.text if word_class else 'N/A'
+                        blocks[f'phrase{phrase_index}'] = phrase_block
+                        phrase_index += 1
 
-                    # 描述
-                    description = sub_block.find('div', class_='def ddef_d db')
-                    block_data['description'] = description.text if description else 'N/A'
+                    else:
+                        # 詞類
+                        block_data['word_class'] = word_class.text if word_class else 'N/A'
 
-                    # 單字翻譯
-                    word_translation = sub_block.find('span', class_='dtrans')
-                    block_data['word_translation'] = word_translation.text if word_translation else 'N/A'
+                        # 描述
+                        description = sub_block.find('div', class_='def ddef_d db')
+                        block_data['description'] = description.text if description else 'N/A'
 
-                    # 例句
-                    example_sentence = sub_block.find('span', class_='eg deg')
-                    block_data['example_sentence'] = example_sentence.text if example_sentence else 'N/A'
+                        # 單字翻譯
+                        word_translation = sub_block.find('span', class_='dtrans')
+                        block_data['word_translation'] = word_translation.text if word_translation else 'N/A'
 
-                    # 例句翻譯
-                    example_sentence_translation = sub_block.find('span', class_='trans dtrans dtrans-se hdb break-cj')
-                    block_data['example_sentence_translation'] = example_sentence_translation.text if example_sentence_translation else 'N/A'
+                        # 例句
+                        example_sentence = sub_block.find('span', class_='eg deg')
+                        block_data['example_sentence'] = example_sentence.text if example_sentence else 'N/A'
 
-                    # 將資料加入到 blocks 字典
-                    blocks[f'block{block_index}'] = block_data
-                    block_index += 1
+                        # 例句翻譯
+                        example_sentence_translation = sub_block.find('span', class_='trans dtrans dtrans-se hdb break-cj')
+                        block_data['example_sentence_translation'] = example_sentence_translation.text if example_sentence_translation else 'N/A'
 
-        self.word[headword] = blocks
+                        # 將資料加入到 blocks 字典
+                        blocks[f'block{block_index}'] = block_data
+                        block_index += 1
 
-        # 調用方法進行排序
-        sorted_regular = DataCrawl.bubble_sort_phrases(self.word, headword)
+            self.word[headword] = blocks
+
+            # 調用方法進行排序
+            DataCrawl.bubble_sort_phrases(self.word, headword)
+            # ----------------------持續追加 JSON 測試----------------------------
+            output_path = os.path.join(os.getcwd(), 'output.json')
+            with open(output_path, 'a', encoding='utf-8') as f:
+                f.write(json.dumps({headword: blocks}, ensure_ascii=False, indent=4) + '\n')
+            # ------------------------------------------------------------------
+
+            return self.word
+
+        else:
+            return ["Error", f"ఠ_ఠ? 沒有你要找的單字 ： '{self.search_key}'"]
 
 
-        # ----------------------持續追加 JSON 測試----------------------------
-        output_path = os.path.join(os.getcwd(), 'output.json')
-        with open(output_path, 'a', encoding='utf-8') as f:
-            f.write(json.dumps({headword: blocks}, ensure_ascii=False, indent=4) + '\n')
-        # ------------------------------------------------------------------
 
-        return self.word
 
 
 

@@ -12,12 +12,16 @@ while True:
         crawler = DataCrawl(search_key)
         result = crawler.crawl()
         # 處理 blocks
-        for key, value in result.items() :
-            for block_key, block_value in value.items():
-                if re.findall(r'^block', block_key):
-                    print(block_value)
-                else :
-                    print("This is phrase")
+        if isinstance(result, dict):
+            for key, value in result.items() :
+                    for block_key, block_value in value.items():
+                        if re.findall(r'^block', block_key):
+                            print(block_value)
+                        else :
+                            print("This is phrase")
+        else:
+            print(result)
+
 
     except Exception as e:
         print(f"\n發生錯誤: {e}")
