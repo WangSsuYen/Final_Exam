@@ -1,12 +1,13 @@
 import tkinter as tk
 from tkinter import messagebox
 import re
-from lib import *
+from lib import *  # Assuming lib is another file with required functions
 
 
 def show_word_details(word_data):
     """顯示 word_data 資料在兩個 Canvas 中，block 在 canvas_1，phrase 在 canvas_2"""
     # 清空 canvas_1 和 canvas_2 的內容
+    print (word_data)
     for widget in block_frame.winfo_children():
         widget.destroy()
     for widget in phrase_frame.winfo_children():
@@ -48,6 +49,14 @@ def show_word_details(word_data):
     # 使用 after 延遲執行更新，確保資料顯示穩定
     root.after(100, lambda: update_scrollregion())
 
+def add_to_database_from_details():
+    """將查詢結果傳遞給 lib.py 進行資料新增"""
+    if word_data:
+        # 呼叫 lib.py 的方法來處理資料新增
+        lib.add_to_database(word_data)
+    else:
+        print("沒有查詢到資料，無法新增。")
+
 
 def update_scrollregion():
     """更新 Canvas 滾動範圍"""
@@ -57,19 +66,34 @@ def update_scrollregion():
     canvas_2.itemconfig(phrase_window_id, width=phrase_frame.winfo_width())
 
 
+def show_error_message(search_key):
+    """顯示錯誤訊息的視窗"""
+    messagebox.showerror("查詢錯誤", f"ఠ_ఠ? 沒有你要找的單字 ： '{search_key}'")
+
 def search_translation():
     """查詢使用者輸入的翻譯文字"""
     input_word = input_entry.get().strip().lower()
+
+    # 清空舊有結果
+    for widget in block_frame.winfo_children():
+        widget.destroy()
+    for widget in phrase_frame.winfo_children():
+        widget.destroy()
+
+    # 開始查詢
     crawler = DataCrawl(input_word)
     data = crawler.crawl()
-    show_word_details(data)
+
+    if isinstance(data, list) and data[0] == "Error":  # 當資料為錯誤時
+        show_error_message(input_word)
+    else:
+        show_word_details(data)
 
 
 def bind_canvas_scroll(canvas):
     """綁定 Canvas 滾動事件"""
     canvas.bind("<Enter>", lambda _: root.bind_all("<MouseWheel>", lambda e: _on_mouse_wheel(canvas, e)))
     canvas.bind("<Leave>", lambda _: root.unbind_all("<MouseWheel>"))
-
 
 
 def _on_mouse_wheel(canvas, event):
@@ -82,20 +106,26 @@ def _on_mouse_wheel(canvas, event):
 
     canvas.yview_scroll(scroll_units, "units")
 
-
 # 創建主視窗
 root = tk.Tk()
 root.title("翻譯小工具")
-root.geometry("1200x1000")
+screen_height = root.winfo_screenheight()
+root.geometry(f"1200x{screen_height - 100}")
 root.configure(bg="#f7b84e")
 
 # --------------------------輸入區域的框架---------------------
 input_frame = tk.Frame(root, bg="#f7b84e", pady=10)
 input_frame.pack(fill="x")
-input_label = tk.Label(input_frame, text="翻譯文字", bg="#f7b84e", font=("Arial", 14), relief='groove').grid(row=0,column=0,padx=(10, 5),sticky="w")
+input_label = tk.Label(input_frame, text="翻譯文字", bg="#f7b84e", font=("Arial", 14), relief='groove').grid(row=0, column=0, padx=(10, 5), sticky="w")
 input_entry = tk.Entry(input_frame, font=("Arial", 14))
 input_entry.grid(row=0, column=1, padx=(10, 5), sticky="we")
-query_button = tk.Button(input_frame, text="查詢", font=("Arial", 12), bg="#e0e0e0", relief="flat", width=8,command=search_translation).grid(row=0, column=2, padx=(10, 5), sticky="we")
+query_button = tk.Button(input_frame, text="查詢", font=("Arial", 12), bg="#e0e0e0", relief="flat", width=8, command=search_translation)
+query_button.grid(row=0, column=2, padx=(10, 5), sticky="we")
+
+# Change the button name to avoid reusing
+add_button = tk.Button(input_frame, text="新增", font=("Arial", 12), bg="#e0e0e0", relief="flat", width=8, command=add_to_database_from_details)
+add_button.grid(row=0, column=3, padx=(10, 5), sticky="we")
+
 input_frame.columnconfigure(1, weight=1)
 
 # ----------------- 顯示區域 - Canvas ------------------------
