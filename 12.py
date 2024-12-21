@@ -7,7 +7,7 @@ from lib import *  # Assuming lib is another file with required functions
 def show_word_details(word_data):
     """顯示 word_data 資料在兩個 Canvas 中，block 在 canvas_1，phrase 在 canvas_2"""
     # 清空 canvas_1 和 canvas_2 的內容
-    print (word_data)
+
     for widget in block_frame.winfo_children():
         widget.destroy()
     for widget in phrase_frame.winfo_children():
