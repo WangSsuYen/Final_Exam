@@ -10,7 +10,7 @@ class WordDatas:
     """
 
     @staticmethod
-    def initialize_database(db: str) -> List[str]:
+    def init_db(db: str) -> List[str]:
         """
         初始化資料庫，建立必要的資料表。
 
@@ -27,7 +27,6 @@ class WordDatas:
                                 description TEXT NOT NULL
                               );''')
                 conn.commit()
-                return ["Success", "٩(⚙ᴗ⚙)۶ 資料庫建立完成"]
 
             except sqlite3.Error as error:
                 return ["Error", f"ఠ_ఠ? 建立資料庫時發生錯誤：{error}"]
@@ -65,15 +64,16 @@ class WordDatas:
         :param data: 包含單字資料的字典。
         :return: 狀態和訊息的列表，表示新增結果。
         """
-        if WordDatas.search_data(db, data["english_word"]):
-            return ["Error", f"ఠ_ఠ? 單字 {data['english_word']} 已存在，無法新增。"]
-
         try:
             conn = sqlite3.connect(db)
             cur = conn.cursor()
-            cur.execute('''INSERT INTO Word (english_word, description) VALUES (?, ?)''',(data["english_word"], data['description']))
+
+            for word, details in data.items():
+                description = f"{details}"
+                cur.execute('''INSERT INTO Word (english_word, description) VALUES (?, ?)''',(word, description))
+
             conn.commit()
-            return ["Success", f"٩(⚙ᴗ⚙)۶ {data['english_word']} 已成功加入資料庫！"]
+            return ["Success", f"٩(⚙ᴗ⚙)۶ 單字已成功加入資料庫！"]
 
         except sqlite3.Error as error:
             return ["Error", f"ఠ_ఠ? 新增資料時發生錯誤：{error}"]

@@ -1,7 +1,9 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 import re
-from lib import *  # Assuming lib is another file with required functions
+from lib import *
+
+db = "word_traslation.db"
 
 
 def show_word_details(word_data):
@@ -12,6 +14,13 @@ def show_word_details(word_data):
         widget.destroy()
     for widget in phrase_frame.winfo_children():
         widget.destroy()
+
+    current_word = WordDatas.search_data(db, list(word_data)[0])
+    if current_word  == None:
+        # 新增單字置資料庫
+        result = WordDatas.insert_word(db, word_data)
+        if result[0] == "Error":
+            messagebox.showerror(result[0], result[1])
 
     # 顯示 block 資料
     block_row = 0
@@ -49,14 +58,6 @@ def show_word_details(word_data):
     # 使用 after 延遲執行更新，確保資料顯示穩定
     root.after(100, lambda: update_scrollregion())
 
-def add_to_database_from_details():
-    """將查詢結果傳遞給 lib.py 進行資料新增"""
-    if word_data:
-        # 呼叫 lib.py 的方法來處理資料新增
-        lib.add_to_database(word_data)
-    else:
-        print("沒有查詢到資料，無法新增。")
-
 
 def update_scrollregion():
     """更新 Canvas 滾動範圍"""
@@ -65,10 +66,6 @@ def update_scrollregion():
     canvas_1.itemconfig(block_window_id, width=block_frame.winfo_width())
     canvas_2.itemconfig(phrase_window_id, width=phrase_frame.winfo_width())
 
-
-def show_error_message(search_key):
-    """顯示錯誤訊息的視窗"""
-    messagebox.showerror("查詢錯誤", f"ఠ_ఠ? 沒有你要找的單字 ： '{search_key}'")
 
 def search_translation():
     """查詢使用者輸入的翻譯文字"""
@@ -85,7 +82,7 @@ def search_translation():
     data = crawler.crawl()
 
     if isinstance(data, list) and data[0] == "Error":  # 當資料為錯誤時
-        show_error_message(input_word)
+        messagebox.showerror("查詢錯誤", f"ఠ_ఠ? 沒有你要找的單字 ： '{input_word}'")
     else:
         show_word_details(data)
 
@@ -106,59 +103,83 @@ def _on_mouse_wheel(canvas, event):
 
     canvas.yview_scroll(scroll_units, "units")
 
+
+
 # 創建主視窗
 root = tk.Tk()
 root.title("翻譯小工具")
 screen_height = root.winfo_screenheight()
-root.geometry(f"1200x{screen_height - 100}")
-root.configure(bg="#f7b84e")
+root.geometry(f"1200x{screen_height - 120}")
+root.configure(bg="#ffffff")
+
+# -------------------修改ttk默認樣式-------------------------
+style = ttk.Style()
+style.configure("TNotebook.Tab",
+                font=("Arial", 12),  # 設定字體、大小與樣式
+                padding=[10, 5],           # 設定內距
+                background="#f0f0f0",      # 頁籤背景顏色
+                foreground="#000000")
+style.map("TNotebook.Tab",
+          background=[("selected", "#ffa07a")],  # 選中頁籤的背景顏色
+          foreground=[("selected", "#ff0000")])  # 選中頁籤的文字顏色
+
+# -------------------創建 Notebook(活頁籤)--------------------
+notebook = ttk.Notebook(root)
+notebook.pack(fill="both", expand=True, pady=(10,10), padx=(10,10))
+
+# ---------------------------查詢頁面---------------------------
+query_page = ttk.Frame(notebook)
+notebook.add(query_page, text="查詢頁面")
 
 # --------------------------輸入區域的框架---------------------
-input_frame = tk.Frame(root, bg="#f7b84e", pady=10)
+input_frame = tk.Frame(query_page, bg="#f7b84e", pady=10)
 input_frame.pack(fill="x")
 input_label = tk.Label(input_frame, text="翻譯文字", bg="#f7b84e", font=("Arial", 14), relief='groove').grid(row=0, column=0, padx=(10, 5), sticky="w")
 input_entry = tk.Entry(input_frame, font=("Arial", 14))
 input_entry.grid(row=0, column=1, padx=(10, 5), sticky="we")
 query_button = tk.Button(input_frame, text="查詢", font=("Arial", 12), bg="#e0e0e0", relief="flat", width=8, command=search_translation)
 query_button.grid(row=0, column=2, padx=(10, 5), sticky="we")
-
-# Change the button name to avoid reusing
-add_button = tk.Button(input_frame, text="新增", font=("Arial", 12), bg="#e0e0e0", relief="flat", width=8, command=add_to_database_from_details)
-add_button.grid(row=0, column=3, padx=(10, 5), sticky="we")
-
 input_frame.columnconfigure(1, weight=1)
 
 # ----------------- 顯示區域 - Canvas ------------------------
-canvas_frame = tk.Frame(root, bg="#f7b84e")
+canvas_frame = tk.Frame(query_page, bg="#f7b84e")
 canvas_frame.pack(fill="both", expand=True)
-
-# Canvas 1 for block
+# block
 canvas_1 = tk.Canvas(canvas_frame, bg="#ffffff", borderwidth=2, relief="groove")
 canvas_1.grid(row=0, column=0, padx=5, pady=10, sticky="nsew")
 scrollbar_1 = tk.Scrollbar(canvas_frame, orient="vertical", command=canvas_1.yview)
 scrollbar_1.grid(row=0, column=1, sticky="ns")
 canvas_1.configure(yscrollcommand=scrollbar_1.set)
-
+# block設定
 block_frame = tk.Frame(canvas_1, bg="#ffffff")
 block_window_id = canvas_1.create_window((0, 0), window=block_frame, anchor='nw')
-
-# Canvas 2 for phrase
+# phrase
 canvas_2 = tk.Canvas(canvas_frame, bg="#e6f2ff", borderwidth=2, relief="groove")
 canvas_2.grid(row=0, column=2, padx=5, pady=10, sticky="nsew")
 scrollbar_2 = tk.Scrollbar(canvas_frame, orient="vertical", command=canvas_2.yview)
 scrollbar_2.grid(row=0, column=3, sticky="ns")
 canvas_2.configure(yscrollcommand=scrollbar_2.set)
-
+# phrase設定
 phrase_frame = tk.Frame(canvas_2, bg="#e6f2ff")
 phrase_window_id = canvas_2.create_window((0, 0), window=phrase_frame, anchor='nw')
-
 # 動態調整布局
 canvas_frame.columnconfigure(0, weight=1)
 canvas_frame.columnconfigure(2, weight=1)
 canvas_frame.rowconfigure(0, weight=1)
-
 # 綁定滾動事件
 bind_canvas_scroll(canvas_1)
 bind_canvas_scroll(canvas_2)
+
+
+# ---------------------------歷史紀錄頁面---------------------------
+history_page = ttk.Frame(notebook)
+notebook.add(history_page, text="歷史紀錄")
+
+
+# --------------------資料庫初始化---------------------------
+result = WordDatas.init_db(db)
+if result != None:
+    messagebox.showerror(result[0], result[1])
+
 
 root.mainloop()
