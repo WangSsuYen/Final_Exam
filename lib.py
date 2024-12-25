@@ -54,6 +54,23 @@ class WordDatas:
         return result
 
 
+    @staticmethod
+    def select_all(db: str) -> Optional[sqlite3.Row]:
+        """
+        抓取所有單字。
+
+        :param db: 資料庫檔案的路徑，型態為字串(str)。
+        :return: 若存在則返回該單字的資料(sqlite3.Row)，否則返回 None。
+        """
+        conn = sqlite3.connect(db)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute('''SELECT * FROM Word ;''')
+        result = cur.fetchall()
+        conn.close()
+        return result
+
+
 
     @staticmethod
     def insert_word(db: str, data: dict) -> List[str]:
