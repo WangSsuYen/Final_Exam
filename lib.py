@@ -68,7 +68,12 @@ class WordDatas:
         cur.execute('''SELECT * FROM Word ;''')
         result = cur.fetchall()
         conn.close()
-        return result
+        # 擷取單字部分
+        word = []
+        for row in result:
+            word.append(dict(row)['english_word'])
+        word.sort()
+        return word
 
 
 

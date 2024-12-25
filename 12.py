@@ -128,6 +128,7 @@ def _on_mouse_wheel(canvas, event):
 root = tk.Tk()
 root.title("翻譯小工具")
 screen_height = root.winfo_screenheight()
+screen_width = root.winfo_screenwidth()
 root.geometry(f"1200x{screen_height - 120}")
 root.configure(bg="#ffffff")
 
@@ -227,31 +228,23 @@ canvas_frame.columnconfigure(2, weight=1)  # phrase canvas 框架權重
 canvas_frame.rowconfigure(0, weight=1)    # canvas frame 垂直權重
 
 
-# ---------------------------歷史紀錄頁面---------------------------
-history_page = ttk.Frame(notebook)
-notebook.add(history_page, text="歷史紀錄")
-for i in range(3):  # 行
-    for j in range(3):  # 列
-        # 每個按鈕作為一個Frame
-        outer_frame = tk.Frame(history_page, bg="lightgreen", bd=2, relief="ridge")
-        outer_frame.grid(row=i, column=j, padx=10, pady=10, sticky="nsew")
+# ---------------------------搜尋過的單字頁面---------------------------
+db_page = ttk.Frame(notebook)
+notebook.add(db_page, text="單字資料庫")
+resutlt = WordDatas.select_all(db)
 
-        # 每個Frame內的Label
-        label = tk.Label(outer_frame, text= history_word, bg="lightgreen", anchor="center")
-        label.pack(pady=5)
-
-        # 每個Frame內的第一個子按鈕
-        inner_button1 = tk.Button(outer_frame, text=f"子按鈕 1", bg="white")
-        inner_button1.pack(pady=5)
-
-        # 每個Frame內的第二個子按鈕
-        inner_button2 = tk.Button(outer_frame, text=f"子按鈕 2", bg="white")
-        inner_button2.pack(pady=5)
-
-# 調整行列比例
-for i in range(3):
-    history_page.grid_rowconfigure(i, weight=1)
-    history_page.grid_columnconfigure(i, weight=1)
+for num in range('a','z',1):
+    word_title = tk.Frame(db_page, bg="lightgreen", bd=2, relief="ridge", width=screen_width/10)
+    for i in resutlt:
+        word_frame = tk.Frame(db_page, bg="lightgreen", bd=2, relief="ridge", width=screen_width/10)
+        word_frame..grid(row=num, column=0, padx=5, pady=5, sticky="nsew")
+        word = tk.Label(word_frame, text=i, bg="lightgreen", font=("Arial", 14, "bold"))
+        word.pack(pady=5)
+        word_button = tk.Button(word_frame, text="查看", bg="white", font=("Arial", 12), relief="flat", width=8,
+                                command=lambda i=i: search_translation(i))
+        word_button.pack(pady=5)
+        word_frame.columnconfigure(0, weight=1)
+        word_frame.columnconfigure(1, weight=1)
 
 
 
