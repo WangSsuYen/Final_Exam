@@ -128,6 +128,7 @@ def _on_mouse_wheel(canvas, event):
 root = tk.Tk()
 root.title("翻譯小工具")
 screen_height = root.winfo_screenheight()
+screen_width = root.winfo_screenwidth()
 root.geometry(f"1200x{screen_height - 120}")
 root.configure(bg="#ffffff")
 
@@ -228,53 +229,32 @@ canvas_frame.rowconfigure(0, weight=1)    # canvas frame 垂直權重
 
 
 # ---------------------------歷史紀錄頁面---------------------------
-result = WordDatas.select_all(db)  # 假設這是資料庫中的結果
-
-# 計算格子行列數
-columns = 5  # 假設每列顯示5個單字
-word_count = len(result)  # 單字總數
-rows = (word_count + columns - 1) // columns  # 根據單字總數計算行數
-
-# 創建歷史紀錄頁面
 history_page = ttk.Frame(notebook)
 notebook.add(history_page, text="歷史紀錄")
+for i in range(3):  # 行
+    for j in range(3):  # 列
+        # 每個按鈕作為一個Frame
+        outer_frame = tk.Frame(history_page, bg="lightgreen", bd=2, relief="ridge")
+        outer_frame.grid(row=i, column=j, padx=10, pady=10, sticky="nsew")
 
-# 設定每個格子的固定大小
-cell_size = 225  # 每個格子的寬度和高度設為100
+        # 每個Frame內的Label
+        label = tk.Label(outer_frame, text= history_word, bg="lightgreen", anchor="center")
+        label.pack(pady=5)
 
-# 設定grid的行列大小為固定值，這樣格子不會隨著視窗大小改變
-for i in range(rows):
-    history_page.grid_rowconfigure(i, minsize=cell_size)  # 設定每一行的高度為固定大小
+        # 每個Frame內的第一個子按鈕
+        inner_button1 = tk.Button(outer_frame, text=f"子按鈕 1", bg="white")
+        inner_button1.pack(pady=5)
 
-for j in range(columns):
-    history_page.grid_columnconfigure(j, minsize=cell_size)  # 設定每一列的寬度為固定大小
+        # 每個Frame內的第二個子按鈕
+        inner_button2 = tk.Button(outer_frame, text=f"子按鈕 2", bg="white")
+        inner_button2.pack(pady=5)
 
-# 動態創建每個單字的按鈕和標籤
-for idx, row in enumerate(result):  # 從資料庫結果中取出 (id, word)
-    i = idx // columns  # 計算行索引
-    j = idx % columns   # 計算列索引
+# 調整行列比例
+for i in range(3):
+    history_page.grid_rowconfigure(i, weight=1)
+    history_page.grid_columnconfigure(i, weight=1)
 
-    # 每個單字放入一個Frame
-    outer_frame = tk.Frame(history_page, bg="lightgreen", bd=2, relief="ridge")
-    outer_frame.grid(row=i, column=j, padx=10, pady=10, sticky="nsew")
 
-    # 單字標籤，設定字型大小及寬度/高度
-    word = row[1]  # 假設row[1]是單字
-    label = tk.Label(outer_frame, text=word, bg="lightgreen", anchor="center", font=("Arial", 20, "bold"), width=12, height=2)
-    label.pack(pady=10, fill="both", expand=True)  # 填充格子並擴展
-
-    # 使用 frame 包住按鈕，讓它們可以平行排列
-    button_frame = tk.Frame(outer_frame, bg="lightgreen")  # 在格子內創建一個內部的frame來包裹按鈕
-     # 第一個子按鈕（修改）
-    inner_button1 = tk.Button(button_frame, text="修改", bg="white", font=("Arial", 16, "bold"))
-    inner_button1.pack(side="left", padx=10,pady=5)  # 設定 side="left" 讓按鈕平行排列，並加上左右間距
-
-    # 第二個子按鈕（刪除）
-    inner_button2 = tk.Button(button_frame, text="刪除", bg="white", font=("Arial", 16, "bold"))
-    inner_button2.pack(side="left", padx=10 ,pady=5)  # 設定 side="left" 讓按鈕平行排列，並加上左右間距
-
-    # 將按鈕的外框 frame 放入 outer_frame
-    button_frame.pack(pady=(0, 40))  # 上方間距設為 0，底部間距設為 5
 
 # --------------------資料庫初始化---------------------------
 result = WordDatas.init_db(db)
