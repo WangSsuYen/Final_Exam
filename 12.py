@@ -9,15 +9,15 @@ db = "word_traslation.db"
 def show_word_details(word_data):
     """顯示 word_data 資料在兩個 Canvas 中，block 在 canvas_1，phrase 在 canvas_2"""
     # 清空 canvas_1 和 canvas_2 的內容
-
     for widget in block_frame.winfo_children():
         widget.destroy()
     for widget in phrase_frame.winfo_children():
         widget.destroy()
 
+
+    # 資料庫新增操作
     current_word = WordDatas.search_data(db, list(word_data)[0])
     if current_word  == None:
-        # 新增單字置資料庫
         result = WordDatas.insert_word(db, word_data)
         if result[0] == "Error":
             messagebox.showerror(result[0], result[1])
@@ -38,16 +38,16 @@ def show_word_details(word_data):
 
     # 顯示 phrase 資料
     phrase_row = 0
-    tk.Label(phrase_frame, text="延伸學習", font=("Arial", 18, "bold")).grid(row=phrase_row, column=0, columnspan=5, pady=10)
+    tk.Label(phrase_frame, text="延伸學習", font=("Arial", 18, "bold"), background='#e6f2ff').grid(row=phrase_row, column=0, columnspan=5, pady=10)
     phrase_row += 1
     for key, value in word_data.items():
         for phrase_key, phrase_value in value.items():
             if re.findall(r'^phrase', phrase_key):  # 找出 phrase 資料
                 for label, field in [("片語", "phrase"), ("描述", "description"), ("翻譯", "word_translation"),("例句", "example_sentence"), ("翻譯例句", "example_sentence_translation")]:
-                    tk.Label(phrase_frame, text=f"{label}:", font=("Arial", 12, "bold"),relief='groove').grid(row=phrase_row, column=0,sticky="e", padx=10, pady=10)
-                    tk.Label(phrase_frame, text=phrase_value.get(field, "N/A"), font=("Arial", 12),wraplength=400).grid(row=phrase_row, column=1, sticky="w", padx=10,pady=5)
+                    tk.Label(phrase_frame, text=f"{label}:", font=("Arial", 12, "bold"),relief='groove', background='#e6f2ff').grid(row=phrase_row, column=0,sticky="e", padx=10, pady=10)
+                    tk.Label(phrase_frame, text=phrase_value.get(field, "N/A"), font=("Arial", 12),wraplength=400, background='#e6f2ff').grid(row=phrase_row, column=1, sticky="w", padx=10,pady=5)
                     phrase_row += 1
-                tk.Label(phrase_frame, text="-" * 100, font=("Arial", 12, "italic")).grid(row=phrase_row, column=0,columnspan=2, pady=10)
+                tk.Label(phrase_frame, text="-" * 100, font=("Arial", 12, "italic"), background='#e6f2ff').grid(row=phrase_row, column=0,columnspan=2, pady=10)
                 phrase_row += 1
 
 
@@ -67,9 +67,10 @@ def update_scrollregion():
     canvas_2.itemconfig(phrase_window_id, width=phrase_frame.winfo_width())
 
 
-def search_translation():
+def search_translation(word=None):
     """查詢使用者輸入的翻譯文字"""
-    input_word = input_entry.get().strip().lower()
+    if word is None:
+        word = input_entry.get().strip().lower()
 
     # 清空舊有結果
     for widget in block_frame.winfo_children():
@@ -78,13 +79,31 @@ def search_translation():
         widget.destroy()
 
     # 開始查詢
-    crawler = DataCrawl(input_word)
+    crawler = DataCrawl(word)
     data = crawler.crawl()
 
     if isinstance(data, list) and data[0] == "Error":  # 當資料為錯誤時
-        messagebox.showerror("查詢錯誤", f"ఠ_ఠ? 沒有你要找的單字 ： '{input_word}'")
+        messagebox.showerror("查詢錯誤", f"ఠ_ఠ? 沒有你要找的單字 ： '{word}'")
     else:
+        # 限制歷史紀錄
+        if word not in history_word:
+            if len(history_word) >= 15:
+                history_word.pop(0)
+            history_word.append(word)
+
+        history_box.delete(0, tk.END)
+        for word in history_word:
+            history_box.insert(tk.END, word)
+
         show_word_details(data)
+
+
+def on_history_select(event):
+    """當歷史紀錄被選擇時，執行搜尋"""
+    selected_index = history_box.curselection()
+    if selected_index:
+        selected_word = history_box.get(selected_index)
+        search_translation(selected_word)
 
 
 def bind_canvas_scroll(canvas):
@@ -112,38 +131,65 @@ screen_height = root.winfo_screenheight()
 root.geometry(f"1200x{screen_height - 120}")
 root.configure(bg="#ffffff")
 
+
+# ----------------------歷史搜尋紀錄-------------------------
+history_word = []
+
+
 # -------------------修改ttk默認樣式-------------------------
 style = ttk.Style()
-style.configure("TNotebook.Tab",
-                font=("Arial", 12),  # 設定字體、大小與樣式
-                padding=[10, 5],           # 設定內距
-                background="#f0f0f0",      # 頁籤背景顏色
-                foreground="#000000")
-style.map("TNotebook.Tab",
-          background=[("selected", "#ffa07a")],  # 選中頁籤的背景顏色
-          foreground=[("selected", "#ff0000")])  # 選中頁籤的文字顏色
+style.configure("TNotebook.Tab", font=("Arial", 12), padding=[10, 5], background="#f0f0f0", foreground="#000000")
+style.map("TNotebook.Tab", background=[("selected", "#ffa07a")], foreground=[("selected", "#ff0000")])
+
 
 # -------------------創建 Notebook(活頁籤)--------------------
 notebook = ttk.Notebook(root)
 notebook.pack(fill="both", expand=True, pady=(10,10), padx=(10,10))
 
+
 # ---------------------------查詢頁面---------------------------
 query_page = ttk.Frame(notebook)
 notebook.add(query_page, text="查詢頁面")
 
+
 # --------------------------輸入區域的框架---------------------
 input_frame = tk.Frame(query_page, bg="#f7b84e", pady=10)
-input_frame.pack(fill="x")
-input_label = tk.Label(input_frame, text="翻譯文字", bg="#f7b84e", font=("Arial", 14), relief='groove').grid(row=0, column=0, padx=(10, 5), sticky="w")
-input_entry = tk.Entry(input_frame, font=("Arial", 14))
-input_entry.grid(row=0, column=1, padx=(10, 5), sticky="we")
-query_button = tk.Button(input_frame, text="查詢", font=("Arial", 12), bg="#e0e0e0", relief="flat", width=8, command=search_translation)
-query_button.grid(row=0, column=2, padx=(10, 5), sticky="we")
-input_frame.columnconfigure(1, weight=1)
+input_frame.grid(row=0, column=0, sticky="nswe", padx=10, pady=5)
+
+input_contain = tk.Frame(input_frame, pady=10, bg="#f7b84e")
+input_contain.pack(expand=True)
+input_label = tk.Label(input_contain, text="翻譯文字", bg="#f7b84e", font=("Arial", 14), relief='groove')
+input_label.grid(row=0, column=0, padx=(10, 5), pady=(10,5), sticky="w")
+input_entry = tk.Entry(input_contain, font=("Arial", 14))
+input_entry.grid(row=0, column=1, padx=(10, 5), pady=(10,5), sticky="e")
+query_button = tk.Button(input_contain, text="查詢", font=("Arial", 12), bg="#e0e0e0", relief="flat", width=8, command=search_translation)
+query_button.grid(row=0, column=2, padx=(10, 5), pady=(10,5), sticky="nse")
+# input_frame.columnconfigure(1, weight=1)
+
+
+# --------------------------歷史搜尋紀錄區---------------------
+history_frame = tk.Frame(query_page, bg="#f7b84e", pady=10)
+history_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=5)
+
+history_contain = tk.Frame(history_frame, pady=10, bg="#f7b84e")
+history_contain.pack(expand=True)
+history_label = tk.Label(history_contain, text="歷史搜尋紀錄", bg="#f7b84e", font=("Arial", 14), relief='groove')
+history_label.grid(row=0, column=0, padx=(10, 5), pady=(10,5), sticky="we")
+history_box = tk.Listbox(history_contain, font=("Arial", 12), bg="#ffffff", fg="#000000", height=10, borderwidth=2, relief="groove")
+history_box.grid(row=0, column=1, padx=(10, 5), pady=(10,5), sticky="we")
+history_scrollbar = tk.Scrollbar(history_contain, orient="vertical", command=history_box.yview)
+history_scrollbar.grid(row=0, column=2, pady=(10,5), sticky="ns")
+history_box.config(yscrollcommand=history_scrollbar.set)
+
+# 清單選擇
+history_box.bind('<<ListboxSelect>>', on_history_select)
+# history_frame.columnconfigure(0, weight=1)
+
+
 
 # ----------------- 顯示區域 - Canvas ------------------------
 canvas_frame = tk.Frame(query_page, bg="#f7b84e")
-canvas_frame.pack(fill="both", expand=True)
+canvas_frame.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=5)
 # block
 canvas_1 = tk.Canvas(canvas_frame, bg="#ffffff", borderwidth=2, relief="groove")
 canvas_1.grid(row=0, column=0, padx=5, pady=10, sticky="nsew")
@@ -163,12 +209,22 @@ canvas_2.configure(yscrollcommand=scrollbar_2.set)
 phrase_frame = tk.Frame(canvas_2, bg="#e6f2ff")
 phrase_window_id = canvas_2.create_window((0, 0), window=phrase_frame, anchor='nw')
 # 動態調整布局
-canvas_frame.columnconfigure(0, weight=1)
-canvas_frame.columnconfigure(2, weight=1)
-canvas_frame.rowconfigure(0, weight=1)
+# canvas_frame.columnconfigure(0, weight=1)
+# canvas_frame.columnconfigure(2, weight=1)
+# canvas_frame.rowconfigure(0, weight=1)
 # 綁定滾動事件
 bind_canvas_scroll(canvas_1)
 bind_canvas_scroll(canvas_2)
+
+
+# -------------------配置權重---------------------
+query_page.rowconfigure(1, weight=1)  # Canvas 框架垂直權重
+query_page.columnconfigure(1, weight=1)  # history_frame 水平權重
+query_page.columnconfigure(0, weight=1)  # input_frame 水平權重
+
+canvas_frame.columnconfigure(0, weight=1)  # block canvas 框架權重
+canvas_frame.columnconfigure(2, weight=1)  # phrase canvas 框架權重
+canvas_frame.rowconfigure(0, weight=1)    # canvas frame 垂直權重
 
 
 # ---------------------------歷史紀錄頁面---------------------------
