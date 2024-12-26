@@ -106,10 +106,7 @@ def on_history_select(event):
         search_translation(selected_word)
 
 
-def bind_canvas_scroll(canvas):
-    """綁定 Canvas 滾動事件"""
-    canvas.bind("<Enter>", lambda _: root.bind_all("<MouseWheel>", lambda e: _on_mouse_wheel(canvas, e)))
-    canvas.bind("<Leave>", lambda _: root.unbind_all("<MouseWheel>"))
+
 
 
 def _on_mouse_wheel(canvas, event):
@@ -176,7 +173,7 @@ history_contain = tk.Frame(history_frame, pady=10, bg="#f7b84e")
 history_contain.pack(expand=True)
 history_label = tk.Label(history_contain, text="歷史搜尋紀錄", bg="#f7b84e", font=("Arial", 14), relief='groove')
 history_label.grid(row=0, column=0, padx=(10, 5), pady=(10,5), sticky="we")
-history_box = tk.Listbox(history_contain, font=("Arial", 12), bg="#ffffff", fg="#000000", height=10, borderwidth=2, relief="groove")
+history_box = tk.Listbox(history_contain, font=("Arial", 12), bg="#ffffff", fg="#000000", height=6, borderwidth=2, relief="groove")
 history_box.grid(row=0, column=1, padx=(10, 5), pady=(10,5), sticky="we")
 history_scrollbar = tk.Scrollbar(history_contain, orient="vertical", command=history_box.yview)
 history_scrollbar.grid(row=0, column=2, pady=(10,5), sticky="ns")
@@ -184,6 +181,7 @@ history_box.config(yscrollcommand=history_scrollbar.set)
 
 # 清單選擇
 history_box.bind('<<ListboxSelect>>', on_history_select)
+
 # history_frame.columnconfigure(0, weight=1)
 
 
@@ -213,10 +211,15 @@ phrase_window_id = canvas_2.create_window((0, 0), window=phrase_frame, anchor='n
 # canvas_frame.columnconfigure(0, weight=1)
 # canvas_frame.columnconfigure(2, weight=1)
 # canvas_frame.rowconfigure(0, weight=1)
+
 # 綁定滾動事件
+def bind_canvas_scroll(canvas):
+    """綁定 Canvas 滾動事件"""
+    canvas.bind("<Enter>", lambda _: root.bind_all("<MouseWheel>", lambda e: _on_mouse_wheel(canvas, e)))
+    canvas.bind("<Leave>", lambda _: root.unbind_all("<MouseWheel>"))
+
 bind_canvas_scroll(canvas_1)
 bind_canvas_scroll(canvas_2)
-
 
 # -------------------配置權重---------------------
 query_page.rowconfigure(1, weight=1)  # Canvas 框架垂直權重
@@ -228,55 +231,120 @@ canvas_frame.columnconfigure(2, weight=1)  # phrase canvas 框架權重
 canvas_frame.rowconfigure(0, weight=1)    # canvas frame 垂直權重
 
 
+
 # ---------------------------歷史紀錄頁面---------------------------
-result = WordDatas.select_all(db)  # 假設這是資料庫中的結果
+def on_tab_change(event):
+    """當頁籤切換時執行動作"""
+    selected_tab = event.widget.tab(event.widget.index("current"))["text"]
+    if selected_tab == "已學習單字":
+        refresh_words_page()
 
-# 計算格子行列數
-columns = 5  # 假設每列顯示5個單字
-word_count = len(result)  # 單字總數
-rows = (word_count + columns - 1) // columns  # 根據單字總數計算行數
 
-# 創建歷史紀錄頁面
-history_page = ttk.Frame(notebook)
-notebook.add(history_page, text="歷史紀錄")
+def refresh_words_page():
+    """刷新已學習單字頁籤內容"""
+    for widget in content_frame.winfo_children():
+        widget.destroy()  # 清空原有內容
 
-# 設定每個格子的固定大小
-cell_size = 250  # 每個格子的寬度和高度設為250
+    # 從資料庫重新獲取資料
+    result = WordDatas.select_all(db)
 
-# 設定grid的行列大小為固定值，這樣格子不會隨著視窗大小改變
-for i in range(rows):
-    history_page.grid_rowconfigure(i, minsize=cell_size)  # 設定每一行的高度為固定大小
+    for key, value in result.items():
+        # 標題
+        title_area = tk.Label(content_frame, text=f'{key.upper()}', font=("Arial", 20, "bold"), bg="#ff6666", fg="#ffffff", anchor="center", relief="groove")
+        title_area.pack(fill="x", padx=5, pady=(15, 0))
 
-for j in range(columns):
-    history_page.grid_columnconfigure(j, minsize=cell_size)  # 設定每一列的寬度為固定大小
+        # 單字框架
+        frame = tk.Frame(content_frame, bg="lightgreen", bd=2, relief="groove")
+        frame.pack(fill="x", padx=5, pady=(0,15))
 
-# 動態創建每個單字的按鈕和標籤
-for idx, row in enumerate(result):  # 從資料庫結果中取出 (id, word)
-    i = idx // columns  # 計算行索引
-    j = idx % columns   # 計算列索引
+        # 渲染單字與按鈕
+        rows, columns = 0, 0
+        for individual_value in value:
+            # 容器
+            individual_contain = tk.Frame(frame, bg="lightgreen")
+            individual_contain.grid(row=rows, column=columns + 1, padx=5, pady=5)
 
-    # 每個單字放入一個Frame
-    outer_frame = tk.Frame(history_page, bg="lightgreen", bd=2, relief="ridge")
-    outer_frame.grid(row=i, column=j, padx=10, pady=10, sticky="nsew")
+            # 單字顯示
+            individual_entry = tk.Entry(individual_contain, bg="lightgreen", font=("Arial", 18), state='normal', width=15)
+            individual_entry.insert(0, individual_value)
+            individual_entry.config(state='readonly', justify='center')
+            individual_entry.pack(side='top', padx=(5, 5), pady=(5, 5))
 
-    # 單字標籤，設定字型大小及寬度/高度
-    word = row[1]  # 假設row[1]是單字
-    label = tk.Label(outer_frame, text=word, bg="lightgreen", anchor="center", font=("Arial", 20, "bold"), width=12, height=2)
-    label.pack(pady=10, fill="both", expand=True)  # 填充格子並擴展
+            # 觸發方法
+            def on_button_click_search(entry_widget=individual_entry):
+                """處理按鈕點擊事件，顯示 Entry 內的文字"""
+                # 獲取 Entry 中的文字
+                text = entry_widget.get()
+                result = WordDatas.search_data(db, text)
+                messagebox.showinfo("Info", result)
 
-    # 使用 frame 包住按鈕，讓它們可以平行排列
-    button_frame = tk.Frame(outer_frame, bg="lightgreen")  # 在格子內創建一個內部的frame來包裹按鈕
+            def on_button_click_update(entry_widget=individual_entry):
+                """處理按鈕點擊事件，更新 Entry 內的文字"""
+                # 獲取 Entry 中的文字
+                text = entry_widget.get()
+                messagebox.showerror('Error', f'{text}')
 
-    # 第一個子按鈕（修改），設置字型大小
-    inner_button1 = tk.Button(button_frame, text="修改", bg="white", font=("Arial", 16, "bold"))  # 設定字型為Arial，字體大小16，字重為粗體
-    inner_button1.pack(side="left", padx=10, pady=5)  # 設定 side="left" 讓按鈕平行排列，並加上左右間距
+            def on_button_click_remove(entry_widget=individual_entry):
+                """處理按鈕點擊事件，刪除 Entry 內的文字"""
+                # 獲取 Entry 中的文字
+                text = entry_widget.get()
+                # 資料庫刪除操作
+                result = WordDatas.delete_word(db, text)
+                if result[0] == "Error":
+                    messagebox.showerror(result[0], result[1])
+                else:
+                    messagebox.showinfo(result[0], result[1])
+                # 更新頁面
+                refresh_words_page()
 
-    # 第二個子按鈕（刪除），設置字型大小
-    inner_button2 = tk.Button(button_frame, text="刪除", bg="white", font=("Arial", 16, "bold"))  # 設定字型為Arial，字體大小16，字重為粗體
-    inner_button2.pack(side="left", padx=10, pady=5)  # 設定 side="left" 讓按鈕平行排列，並加上左右間距
 
-    # 將按鈕的外框 frame 放入 outer_frame
-    button_frame.pack(pady=(0, 5))  # 上方間距設為 0，底部間距設為 5
+            # 修改與刪除按鈕
+            inner_button1 = tk.Button(individual_contain, text="查看", bg="#00ffff", font=("Arial", 12), width=6, command=lambda e=individual_entry: on_button_click_search(e))
+            inner_button1.pack(side="left", padx=(5,5))
+            inner_button2 = tk.Button(individual_contain, text="修改", bg="#a9a9a9", font=("Arial", 12), width=6, command=lambda e=individual_entry: on_button_click_update(e))
+            inner_button2.pack(side="left", padx=(5,5))
+            inner_button3 = tk.Button(individual_contain, text="刪除", bg="#ff0000", font=("Arial", 12), width=6, command=lambda e=individual_entry: on_button_click_remove(e))
+            inner_button3.pack(side="left", padx=(5,5))
+
+            columns += 1
+            if columns >= 4:
+                rows += 1
+                columns = 0
+
+    # 更新滾動區域
+    content_frame.update_idletasks()
+    word_contain.config(scrollregion=word_contain.bbox("all"))
+
+
+words_page = ttk.Frame(notebook)
+notebook.add(words_page, text="已學習單字")
+
+word_contain = tk.Canvas(words_page, bg="#a9a9a9")
+word_contain.grid(row=0, column=0, padx=10, pady=5, sticky="nsew")
+word_scrollbar = tk.Scrollbar(words_page, orient="vertical", command=word_contain.yview)
+word_scrollbar.grid(row=0, column=1, pady=5, sticky="ns")
+word_contain.config(yscrollcommand=word_scrollbar.set)
+
+# 創建一個框架來放置所有內容
+content_frame = tk.Frame(word_contain)
+word_window_id = word_contain.create_window((0, 0), window=content_frame, anchor="nw")
+
+# 動態調整 content_frame 寬度
+def adjust_content_frame_width(event):
+    canvas_width = event.width
+    word_contain.itemconfig(word_window_id, width=canvas_width)
+
+word_contain.bind("<Configure>", adjust_content_frame_width)
+
+# 綁定滾動事件
+bind_canvas_scroll(word_contain)
+
+words_page.grid_rowconfigure(0, weight=1)
+words_page.grid_columnconfigure(0, weight=1)
+
+# 綁定頁籤切換事件
+notebook.bind("<<NotebookTabChanged>>", on_tab_change)
+
 
 
 # --------------------資料庫初始化---------------------------

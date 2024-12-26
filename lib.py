@@ -37,7 +37,7 @@ class WordDatas:
 
 
     @staticmethod
-    def search_data(db: str, english_word: str) -> Optional[sqlite3.Row]:
+    def search_data(db: str, word: str) -> Optional[sqlite3.Row]:
         """
         查詢單字單元。
 
@@ -48,10 +48,14 @@ class WordDatas:
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
-        cur.execute('''SELECT * FROM Word WHERE english_word = ?;''', (english_word,))
+        cur.execute('''SELECT * FROM Word WHERE english_word = ?;''', (word,))
         result = cur.fetchone()
         conn.close()
-        return result
+
+        if result:
+            return result["description"]
+        else:
+            return None
 
 
     @staticmethod
@@ -68,12 +72,24 @@ class WordDatas:
         cur.execute('''SELECT * FROM Word ;''')
         result = cur.fetchall()
         conn.close()
+
         # 擷取單字部分
-        word = []
+        words = []
         for row in result:
-            word.append(dict(row)['english_word'])
-        word.sort()
-        return word
+            words.append(dict(row)['english_word'])
+        words.sort()
+
+        # 已字母開頭分類
+        grouped_words = {}
+        for word in words:
+            first_letter = word[0].lower()
+
+            if first_letter not in grouped_words:
+                grouped_words[first_letter] = []
+
+            grouped_words[first_letter].append(word)
+
+        return grouped_words
 
 
 
@@ -106,7 +122,7 @@ class WordDatas:
 
 
     @staticmethod
-    def delete_word(db: str, english_word: str) -> List[str]:
+    def delete_word(db: str, word: str) -> List[str]:
         """
         刪除單字單元。
 
@@ -114,15 +130,15 @@ class WordDatas:
         :param english_word: 要刪除的英文單字名稱，型態為字串(str)。
         :return: 狀態和訊息的列表，表示刪除結果。
         """
-        if not WordDatas.search_data(db, english_word):
-            return ["Error", f"ఠ_ఠ? 找不到 {english_word}，無法刪除。"]
+        if not WordDatas.search_data(db, word):
+            return ["Error", f"ఠ_ఠ? 找不到 {word}，無法刪除。"]
 
         try:
             conn = sqlite3.connect(db)
             cur = conn.cursor()
-            cur.execute('''DELETE FROM Word WHERE english_word = ?;''', (english_word,))
+            cur.execute('''DELETE FROM Word WHERE english_word = ?;''', (word,))
             conn.commit()
-            return ["Success", f"٩(⚙ᴗ⚙)۶ {english_word} 已刪除！"]
+            return ["Success", f"٩(⚙ᴗ⚙)۶ {word} 已刪除！"]
 
         except sqlite3.Error as error:
             return ["Error", f"ఠ_ఠ? 刪除資料時發生錯誤：{error}"]
