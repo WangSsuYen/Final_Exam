@@ -162,7 +162,6 @@ input_entry = tk.Entry(input_contain, font=("Arial", 14))
 input_entry.grid(row=0, column=1, padx=(10, 5), pady=(10,5), sticky="e")
 query_button = tk.Button(input_contain, text="查詢", font=("Arial", 12), bg="#e0e0e0", relief="flat", width=8, command=search_translation)
 query_button.grid(row=0, column=2, padx=(10, 5), pady=(10,5), sticky="nse")
-# input_frame.columnconfigure(1, weight=1)
 
 
 # --------------------------歷史搜尋紀錄區---------------------
@@ -181,9 +180,6 @@ history_box.config(yscrollcommand=history_scrollbar.set)
 
 # 清單選擇
 history_box.bind('<<ListboxSelect>>', on_history_select)
-
-# history_frame.columnconfigure(0, weight=1)
-
 
 
 # ----------------- 顯示區域 - Canvas ------------------------
@@ -207,10 +203,6 @@ canvas_2.configure(yscrollcommand=scrollbar_2.set)
 # phrase設定
 phrase_frame = tk.Frame(canvas_2, bg="#e6f2ff")
 phrase_window_id = canvas_2.create_window((0, 0), window=phrase_frame, anchor='nw')
-# 動態調整布局
-# canvas_frame.columnconfigure(0, weight=1)
-# canvas_frame.columnconfigure(2, weight=1)
-# canvas_frame.rowconfigure(0, weight=1)
 
 # 綁定滾動事件
 def bind_canvas_scroll(canvas):
@@ -220,6 +212,8 @@ def bind_canvas_scroll(canvas):
 
 bind_canvas_scroll(canvas_1)
 bind_canvas_scroll(canvas_2)
+
+
 
 # -------------------配置權重---------------------
 query_page.rowconfigure(1, weight=1)  # Canvas 框架垂直權重
@@ -276,7 +270,7 @@ def refresh_words_page():
                 # 獲取 Entry 中的文字
                 text = entry_widget.get()
                 result = WordDatas.search_data(db, text)
-                messagebox.showinfo("Info", result)
+                show_info_window(result)
 
             def on_button_click_update(entry_widget=individual_entry):
                 """處理按鈕點擊事件，更新 Entry 內的文字"""
@@ -314,6 +308,62 @@ def refresh_words_page():
     # 更新滾動區域
     content_frame.update_idletasks()
     word_contain.config(scrollregion=word_contain.bbox("all"))
+
+
+def show_info_window(result):
+    """顯示帶有 Label 和 Entry 的自定義提示框"""
+    # 創建一個新的 Toplevel 視窗作為提示框
+
+    info_window = tk.Toplevel()
+    info_window.title("詳細資訊")
+    info_window.geometry("400x400")
+
+    # 設定一個滾動條
+    canvas = tk.Canvas(info_window)
+    scroll_y = tk.Scrollbar(info_window, orient="vertical", command=canvas.yview)
+    canvas.configure(yscrollcommand=scroll_y.set)
+    scroll_y.pack(side="right", fill="y")
+    canvas.pack(side="left", fill="both", expand=True)
+
+    frame = tk.Frame(canvas)
+    canvas.create_window((0, 0), window=frame, anchor="nw")
+
+    # 更新框架大小
+    frame.update_idletasks()
+    canvas.config(scrollregion=canvas.bbox("all"))
+
+    # 轉出字典
+    description_data = eval(result['description'])
+
+    # 顯示資料
+    for block, data in description_data.items():
+        # 顯示每一個 block 的資料
+        if isinstance(data, dict):
+            tk.Label(frame, text=f"分類: {data['word_class']}", font=("Arial", 10)).pack(pady=5)
+            tk.Label(frame, text=f"描述: {data['description']}", font=("Arial", 10), wraplength=350).pack(pady=5)
+
+            tk.Label(frame, text="翻譯:", font=("Arial", 10)).pack(pady=5)
+            translation_entry = tk.Entry(frame, font=("Arial", 10), width=30)
+            translation_entry.insert(0, data['word_translation'])
+            translation_entry.pack(pady=5)
+
+            tk.Label(frame, text="範例句子:", font=("Arial", 10)).pack(pady=5)
+            example_entry = tk.Entry(frame, font=("Arial", 10), width=30)
+            example_entry.insert(0, data['example_sentence'])
+            example_entry.pack(pady=5)
+
+            tk.Label(frame, text="翻譯句子:", font=("Arial", 10)).pack(pady=5)
+            example_translation_entry = tk.Entry(frame, font=("Arial", 10), width=30)
+            example_translation_entry.insert(0, data['example_sentence_translation'])
+            example_translation_entry.pack(pady=5)
+
+    # 設置確認按鈕
+    def close_window():
+        info_window.destroy()
+
+    tk.Button(info_window, text="確認", command=close_window).pack(pady=10)
+
+
 
 
 words_page = ttk.Frame(notebook)
