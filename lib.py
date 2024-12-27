@@ -53,7 +53,7 @@ class WordDatas:
         conn.close()
 
         if result:
-            return result["description"]
+            return result
         else:
             return None
 
