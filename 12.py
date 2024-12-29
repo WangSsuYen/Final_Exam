@@ -244,22 +244,22 @@ def refresh_words_page():
 
     for key, value in result.items():
         # 標題
-        title_area = tk.Label(content_frame, text=f'{key.upper()}', font=("Arial", 20, "bold"), bg="#ff6666", fg="#ffffff", anchor="center", relief="groove")
+        title_area = tk.Label(content_frame, text=f'{key.upper()}', font=("Arial", 20, "bold"), bg="#333d51", fg="#ffffff", anchor="center", relief="groove")
         title_area.pack(fill="x", padx=5, pady=(15, 0))
 
         # 單字框架
-        frame = tk.Frame(content_frame, bg="lightgreen", bd=2, relief="groove")
+        frame = tk.Frame(content_frame, bg="#cbd0d8", bd=2, relief="groove")
         frame.pack(fill="x", padx=5, pady=(0,15))
 
         # 渲染單字與按鈕
         rows, columns = 0, 0
         for individual_value in value:
             # 容器
-            individual_contain = tk.Frame(frame, bg="lightgreen")
+            individual_contain = tk.Frame(frame, bg="#d3ac2b")
             individual_contain.grid(row=rows, column=columns + 1, padx=5, pady=5)
 
             # 單字顯示
-            individual_entry = tk.Entry(individual_contain, bg="lightgreen", font=("Arial", 18), state='normal', width=15)
+            individual_entry = tk.Entry(individual_contain, bg="#d3ac2b", font=("Arial", 18), state='normal', width=15)
             individual_entry.insert(0, individual_value)
             individual_entry.config(state='readonly', justify='center')
             individual_entry.pack(side='top', padx=(5, 5), pady=(5, 5))
@@ -276,7 +276,8 @@ def refresh_words_page():
                 """處理按鈕點擊事件，更新 Entry 內的文字"""
                 # 獲取 Entry 中的文字
                 text = entry_widget.get()
-                messagebox.showerror('Error', f'{text}')
+                revise_info_window(result)
+                # messagebox.showerror('Error', f'{text}')
 
             def on_button_click_remove(entry_widget=individual_entry):
                 """處理按鈕點擊事件，刪除 Entry 內的文字"""
@@ -313,10 +314,9 @@ def refresh_words_page():
 def show_info_window(result):
     """顯示帶有 Label 和 Entry 的自定義提示框"""
     # 創建一個新的 Toplevel 視窗作為提示框
-
     info_window = tk.Toplevel()
     info_window.title("詳細資訊")
-    info_window.geometry("400x400")
+    info_window.geometry("500x500")  # 增加高度來適應內容
 
     # 設定一個滾動條
     canvas = tk.Canvas(info_window)
@@ -338,31 +338,99 @@ def show_info_window(result):
     # 顯示資料
     for block, data in description_data.items():
         # 顯示每一個 block 的資料
-        if isinstance(data, dict):
-            tk.Label(frame, text=f"分類: {data['word_class']}", font=("Arial", 10)).pack(pady=5)
-            tk.Label(frame, text=f"描述: {data['description']}", font=("Arial", 10), wraplength=350).pack(pady=5)
+       if isinstance(data, dict):
+        # 使用 get 方法來避免 KeyError
+        word_class = data.get('word_class', '未知分類')
+        description = data.get('description', '無描述')
 
-            tk.Label(frame, text="翻譯:", font=("Arial", 10)).pack(pady=5)
-            translation_entry = tk.Entry(frame, font=("Arial", 10), width=30)
-            translation_entry.insert(0, data['word_translation'])
-            translation_entry.pack(pady=5)
+        # 文字標籤
+        tk.Label(frame, text=f"分類: {word_class}", font=("Arial", 10, 'bold'), anchor="w", fg="white", bg="#191970").pack(pady=(5, 2), fill="x")
+        tk.Label(frame, text=f"描述: {description}", font=("Arial", 10), wraplength=350, fg="white", bg="#191970").pack(pady=(2, 5), fill="x")
 
-            tk.Label(frame, text="範例句子:", font=("Arial", 10)).pack(pady=5)
-            example_entry = tk.Entry(frame, font=("Arial", 10), width=30)
-            example_entry.insert(0, data['example_sentence'])
-            example_entry.pack(pady=5)
+        # 翻譯
+        tk.Label(frame, text="翻譯:", font=("Arial", 10, 'bold'), anchor="w", fg="white", bg="#191970").pack(pady=(5, 2), fill="x")
+        translation_entry = tk.Text(frame, font=("Arial", 10), height=4, width=20, bg="white", wrap="word", bd=0)  # 移除邊框
+        translation_entry.insert("1.0", data.get('word_translation', ''))
+        translation_entry.pack(pady=(0, 5), fill="x")
 
-            tk.Label(frame, text="翻譯句子:", font=("Arial", 10)).pack(pady=5)
-            example_translation_entry = tk.Entry(frame, font=("Arial", 10), width=30)
-            example_translation_entry.insert(0, data['example_sentence_translation'])
-            example_translation_entry.pack(pady=5)
+        # 範例句子
+        tk.Label(frame, text="範例句子:", font=("Arial", 10, 'bold'), anchor="w", fg="white", bg="#191970").pack(pady=(5, 2), fill="x")
+        example_entry = tk.Text(frame, font=("Arial", 10), height=4, width=20, bg="white", wrap="word", bd=0)  # 移除邊框
+        example_entry.insert("1.0", data.get('example_sentence', ''))
+        example_entry.pack(pady=(0, 5), fill="x")
+
+        # 翻譯句子
+        tk.Label(frame, text="翻譯句子:", font=("Arial", 10, 'bold'), anchor="w", fg="white", bg="#191970").pack(pady=(5, 2), fill="x")
+        example_translation_entry = tk.Text(frame, font=("Arial", 10), height=4, width=20, bg="white", wrap="word", bd=0)  # 移除邊框
+        example_translation_entry.insert("1.0", data.get('example_sentence_translation', ''))
+        example_translation_entry.pack(pady=(0, 5), fill="x")
+
+    # 更新畫布滾動區域
+    def update_scroll_region(event):
+        canvas.configure(scrollregion=canvas.bbox("all"))
+    frame.bind("<Configure>", update_scroll_region)
 
     # 設置確認按鈕
     def close_window():
         info_window.destroy()
+    tk.Button(info_window, text="確認", command=close_window, font=("Arial", 12), bg="#8fbc8f").pack(padx=10)
 
-    tk.Button(info_window, text="確認", command=close_window).pack(pady=10)
+def revise_info_window(result):
+    """創建可修改文字的視窗"""
+    # 創建新的 Toplevel 視窗
+    info_window = tk.Toplevel()
+    info_window.title("修改信息")
+    info_window.geometry("400x400")
 
+    # 設置一個標題
+    title_label = tk.Label(info_window, text="修改資料", font=("Arial", 14, 'bold'))
+    title_label.pack(pady=10)
+
+    # 修改分類（text1），讓使用者可以編輯
+    tk.Label(info_window, text="分類:", font=("Arial", 10)).pack(pady=(5, 2), anchor="w")
+    category_entry = tk.Entry(info_window, font=("Arial", 10), width=30)
+    category_entry.insert(0, result.get('word_class', '未知分類'))  # 預設顯示原來的分類
+    category_entry.pack(pady=(0, 5))
+
+    # 修改描述（text2），讓使用者可以編輯
+    tk.Label(info_window, text="描述:", font=("Arial", 10)).pack(pady=(5, 2), anchor="w")
+    description_entry = tk.Entry(info_window, font=("Arial", 10), width=30)
+    description_entry.insert(0, result.get('description', '無描述'))  # 預設顯示原來的描述
+    description_entry.pack(pady=(0, 5))
+
+    # 修改翻譯（text3），讓使用者可以編輯
+    tk.Label(info_window, text="翻譯:", font=("Arial", 10)).pack(pady=(5, 2), anchor="w")
+    translation_entry = tk.Entry(info_window, font=("Arial", 10), width=30)
+    translation_entry.insert(0, result.get('word_translation', ''))  # 預設顯示原來的翻譯
+    translation_entry.pack(pady=(0, 5))
+
+    # 修改範例句子（text4）
+    tk.Label(info_window, text="範例句子:", font=("Arial", 10)).pack(pady=(5, 2), anchor="w")
+    example_entry = tk.Entry(info_window, font=("Arial", 10), width=30)
+    example_entry.insert(0, result.get('example_sentence', ''))  # 預設顯示原來的範例句子
+    example_entry.pack(pady=(0, 5))
+
+    # 修改翻譯句子（text5）
+    tk.Label(info_window, text="翻譯句子:", font=("Arial", 10)).pack(pady=(5, 2), anchor="w")
+    example_translation_entry = tk.Entry(info_window, font=("Arial", 10), width=30)
+    example_translation_entry.insert(0, result.get('example_sentence_translation', ''))  # 預設顯示翻譯句子
+    example_translation_entry.pack(pady=(0, 5))
+
+    # 儲存按鈕，更新文字
+    def save_changes():
+        result['word_class'] = category_entry.get()  # 更新分類
+        result['description'] = description_entry.get()  # 更新描述
+        result['word_translation'] = translation_entry.get()  # 更新翻譯
+        result['example_sentence'] = example_entry.get()  # 更新範例句子
+        result['example_sentence_translation'] = example_translation_entry.get()  # 更新翻譯句子
+        info_window.destroy()  # 關閉視窗
+
+    save_button = tk.Button(info_window, text="儲存變更", command=save_changes, font=("Arial", 12), bg="#00ffff")
+    save_button.pack(pady=20)
+
+    # 關閉視窗按鈕
+    close_button = tk.Button(info_window, text="關閉", command=info_window.destroy, font=("Arial", 12), bg="#ff0000")
+    close_button.pack(pady=10)
 
 
 
