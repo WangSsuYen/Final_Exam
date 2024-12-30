@@ -401,7 +401,7 @@ def revise_info_window(result):
     """創建可修改文字的視窗"""
     # 創建新的 Toplevel 視窗
     info_window = tk.Toplevel()
-    info_window.title("修改頁面")
+    
 
     # 設置滾動條和畫布
     revise_info_canvas = tk.Canvas(info_window)
@@ -415,6 +415,7 @@ def revise_info_window(result):
 
     # 轉出字典
     description_data = eval(result['description'])
+    print(description_data)
 
 
     for block, data in description_data.items():
@@ -431,32 +432,28 @@ def revise_info_window(result):
                 tk.Label(revise_info_frame, text=f"片語: {phrase}", font=("Arial", 12, 'bold'), anchor="w", fg="white", bg=color, bd=5, relief='raised').pack(fill="x")
 
             # 描述
-            tk.Label(revise_info_frame, text="描述:", font=("Arial", 12, 'bold'), wraplength=350, fg="white", bg=color, anchor='w', bd=5, relief='raised').pack(fill="x")
+            tk.Label(revise_info_frame, text="描述:", font=("Arial", 12, 'bold'), fg="white", bg=color, anchor='w', bd=5, relief='raised').pack(fill="x")
             description_entry = tk.Text(revise_info_frame, font=("Arial", 12), height=4, bg="white", wrap="word", bd=0)
             description_entry.insert("1.0", data.get('description', 'N/A'))
-            description_entry.config(state=tk.DISABLED)
             description_entry.pack(fill='x')
 
             # 翻譯
             if re.findall(r'^block', block):
                 tk.Label(revise_info_frame, text="翻譯:", font=("Arial", 12, 'bold'), anchor="w", fg="white", bg=color, bd=5, relief='raised').pack(fill="x")
-                translation_entry = tk.Text(revise_info_frame, font=("Arial", 12), height=4, width=20, bg="white", wrap="word", bd=0)
+                translation_entry = tk.Text(revise_info_frame, font=("Arial", 12), height=4, bg="white", wrap="word", bd=0)
                 translation_entry.insert("1.0", data.get('word_translation', 'N/A'))
-                translation_entry.config(state=tk.DISABLED)
                 translation_entry.pack(fill="x")
 
             # 範例句子
             tk.Label(revise_info_frame, text="範例句子:", font=("Arial", 12, 'bold'), anchor="w", fg="white", bg=color, bd=5, relief='raised').pack(fill="x")
-            example_entry = tk.Text(revise_info_frame, font=("Arial", 12), height=4, width=20, bg="white", wrap="word", bd=0)
+            example_entry = tk.Text(revise_info_frame, font=("Arial", 12), height=4, bg="white", wrap="word", bd=0)
             example_entry.insert("1.0", data.get('example_sentence', 'N/A'))
-            example_entry.config(state=tk.DISABLED)
             example_entry.pack(fill="x")
 
             # 翻譯句子
             tk.Label(revise_info_frame, text="翻譯句子:", font=("Arial", 12, 'bold'), anchor="w", fg="white", bg=color, bd=5, relief='raised').pack(fill="x")
-            example_translation_entry = tk.Text(revise_info_frame, font=("Arial", 12), height=4, width=20, bg="white", wrap="word", bd=0)
+            example_translation_entry = tk.Text(revise_info_frame, font=("Arial", 12), height=4, bg="white", wrap="word", bd=0)
             example_translation_entry.insert("1.0", data.get('example_sentence_translation', 'N/A'))
-            example_translation_entry.config(state=tk.DISABLED)
             example_translation_entry.pack(pady=(0, 15), fill="x")
 
 
@@ -470,11 +467,11 @@ def revise_info_window(result):
         info_window.destroy()  # 關閉視窗
 
     save_button = tk.Button(info_window, text="儲存變更", command=save_changes, font=("Arial", 12), bg="#00ffff")
-    save_button.pack(pady=20)
+    save_button.pack(padx=(10,10), pady=(10,10))
 
     # 關閉視窗按鈕
     close_button = tk.Button(info_window, text="關閉", command=info_window.destroy, font=("Arial", 12), bg="#ff0000")
-    close_button.pack(pady=10)
+    close_button.pack(padx=(10,10), pady=(10,10))
 
     # 更新滾動區域
     revise_info_frame.update_idletasks()
@@ -485,10 +482,12 @@ def revise_info_window(result):
     # 更新視窗大小的邏輯
     def update_window_size():
         info_window.update_idletasks()
-        width = entry.winfo_width()
-        info_window.geometry(f"{width + 100}x600")
+        width = description_entry.winfo_width()
+        info_window.geometry(f"{width + 150}x600")
     # 使用 after 延遲更新大小
     info_window.after(100, update_window_size)
+    # 設定抬頭
+    info_window.title(f" {result['english_word']} 的修改頁面")
 
 
 
