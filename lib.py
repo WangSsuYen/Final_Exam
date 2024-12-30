@@ -411,8 +411,8 @@ class DataCrawl:
                         phrase_block['description'] = description.text if description else 'N/A'
 
                         # 片語翻譯
-                        word_translation = sub_block.find('span', class_='dtrans')
-                        phrase_block['word_translation'] = word_translation.text if word_translation else 'N/A'
+                        # word_translation = sub_block.find('span', class_='dtrans')
+                        # phrase_block['word_translation'] = word_translation.text if word_translation else 'N/A'
 
                         # 片語例句
                         example_sentence = sub_block.find('span', class_='eg deg')

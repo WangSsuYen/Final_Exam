@@ -14,7 +14,6 @@ def show_word_details(word_data):
     for widget in phrase_frame.winfo_children():
         widget.destroy()
 
-
     # 資料庫新增操作
     current_word = WordDatas.search_data(db, list(word_data)[0])
     if current_word  == None:
@@ -276,8 +275,8 @@ def refresh_words_page():
                 """處理按鈕點擊事件，更新 Entry 內的文字"""
                 # 獲取 Entry 中的文字
                 text = entry_widget.get()
+                result = WordDatas.search_data(db, text)
                 revise_info_window(result)
-                # messagebox.showerror('Error', f'{text}')
 
             def on_button_click_remove(entry_widget=individual_entry):
                 """處理按鈕點擊事件，刪除 Entry 內的文字"""
@@ -316,105 +315,150 @@ def show_info_window(result):
     # 創建一個新的 Toplevel 視窗作為提示框
     info_window = tk.Toplevel()
     info_window.title("詳細資訊")
-    info_window.geometry("500x500")  # 增加高度來適應內容
 
-    # 設定一個滾動條
-    canvas = tk.Canvas(info_window)
-    scroll_y = tk.Scrollbar(info_window, orient="vertical", command=canvas.yview)
-    canvas.configure(yscrollcommand=scroll_y.set)
+
+    # 設置滾動條和畫布
+    show_info_canvas = tk.Canvas(info_window)
+    scroll_y = tk.Scrollbar(info_window, orient="vertical", command=show_info_canvas.yview)
+    show_info_canvas.config(yscrollcommand=scroll_y.set)
     scroll_y.pack(side="right", fill="y")
-    canvas.pack(side="left", fill="both", expand=True)
+    show_info_canvas.pack(side="left", fill="both", expand=True)
 
-    frame = tk.Frame(canvas)
-    canvas.create_window((0, 0), window=frame, anchor="nw")
-
-    # 更新框架大小
-    frame.update_idletasks()
-    canvas.config(scrollregion=canvas.bbox("all"))
+    show_info_frame = tk.Frame(show_info_canvas, bd=5, relief='raised')
+    show_info_canvas.create_window((0, 0), window=show_info_frame, anchor="nw")
 
     # 轉出字典
     description_data = eval(result['description'])
 
     # 顯示資料
     for block, data in description_data.items():
-        # 顯示每一個 block 的資料
-       if isinstance(data, dict):
-        # 使用 get 方法來避免 KeyError
-        word_class = data.get('word_class', '未知分類')
-        description = data.get('description', '無描述')
+        if isinstance(data, dict):
+            # 文字翻譯
+            if re.findall(r'^block', block):
+                word_class = data.get('word_class', '未知分類')
+                color = "#191970"
+                # 文字標籤
+                tk.Label(show_info_frame, text=f"分類: {word_class}", font=("Arial", 12, 'bold'), anchor="w", fg="white", bg=color, bd=5, relief='raised').pack(fill="x")
+            else:
+                phrase = data.get('phrase')
+                color = '#ff0000'
+                tk.Label(show_info_frame, text=f"片語: {phrase}", font=("Arial", 12, 'bold'), anchor="w", fg="white", bg=color, bd=5, relief='raised').pack(fill="x")
 
-        # 文字標籤
-        tk.Label(frame, text=f"分類: {word_class}", font=("Arial", 10, 'bold'), anchor="w", fg="white", bg="#191970").pack(pady=(5, 2), fill="x")
-        tk.Label(frame, text=f"描述: {description}", font=("Arial", 10), wraplength=350, fg="white", bg="#191970").pack(pady=(2, 5), fill="x")
+            # 描述
+            tk.Label(show_info_frame, text="描述:", font=("Arial", 12, 'bold'), wraplength=350, fg="white", bg=color, anchor='w', bd=5, relief='raised').pack(fill="x")
+            description_entry = tk.Text(show_info_frame, font=("Arial", 12), height=4, bg="white", wrap="word", bd=0)
+            description_entry.insert("1.0", data.get('description', 'N/A'))
+            description_entry.config(state=tk.DISABLED)
+            description_entry.pack(fill='x')
 
-        # 翻譯
-        tk.Label(frame, text="翻譯:", font=("Arial", 10, 'bold'), anchor="w", fg="white", bg="#191970").pack(pady=(5, 2), fill="x")
-        translation_entry = tk.Text(frame, font=("Arial", 10), height=4, width=20, bg="white", wrap="word", bd=0)  # 移除邊框
-        translation_entry.insert("1.0", data.get('word_translation', ''))
-        translation_entry.pack(pady=(0, 5), fill="x")
+            # 翻譯
+            if re.findall(r'^block', block):
+                tk.Label(show_info_frame, text="翻譯:", font=("Arial", 12, 'bold'), anchor="w", fg="white", bg=color, bd=5, relief='raised').pack(fill="x")
+                translation_entry = tk.Text(show_info_frame, font=("Arial", 12), height=4, width=20, bg="white", wrap="word", bd=0)
+                translation_entry.insert("1.0", data.get('word_translation', 'N/A'))
+                translation_entry.config(state=tk.DISABLED)
+                translation_entry.pack(fill="x")
 
-        # 範例句子
-        tk.Label(frame, text="範例句子:", font=("Arial", 10, 'bold'), anchor="w", fg="white", bg="#191970").pack(pady=(5, 2), fill="x")
-        example_entry = tk.Text(frame, font=("Arial", 10), height=4, width=20, bg="white", wrap="word", bd=0)  # 移除邊框
-        example_entry.insert("1.0", data.get('example_sentence', ''))
-        example_entry.pack(pady=(0, 5), fill="x")
+            # 範例句子
+            tk.Label(show_info_frame, text="範例句子:", font=("Arial", 12, 'bold'), anchor="w", fg="white", bg=color, bd=5, relief='raised').pack(fill="x")
+            example_entry = tk.Text(show_info_frame, font=("Arial", 12), height=4, width=20, bg="white", wrap="word", bd=0)
+            example_entry.insert("1.0", data.get('example_sentence', 'N/A'))
+            example_entry.config(state=tk.DISABLED)
+            example_entry.pack(fill="x")
 
-        # 翻譯句子
-        tk.Label(frame, text="翻譯句子:", font=("Arial", 10, 'bold'), anchor="w", fg="white", bg="#191970").pack(pady=(5, 2), fill="x")
-        example_translation_entry = tk.Text(frame, font=("Arial", 10), height=4, width=20, bg="white", wrap="word", bd=0)  # 移除邊框
-        example_translation_entry.insert("1.0", data.get('example_sentence_translation', ''))
-        example_translation_entry.pack(pady=(0, 5), fill="x")
+            # 翻譯句子
+            tk.Label(show_info_frame, text="翻譯句子:", font=("Arial", 12, 'bold'), anchor="w", fg="white", bg=color, bd=5, relief='raised').pack(fill="x")
+            example_translation_entry = tk.Text(show_info_frame, font=("Arial", 12), height=4, width=20, bg="white", wrap="word", bd=0)
+            example_translation_entry.insert("1.0", data.get('example_sentence_translation', 'N/A'))
+            example_translation_entry.config(state=tk.DISABLED)
+            example_translation_entry.pack(pady=(0, 15), fill="x")
 
-    # 更新畫布滾動區域
-    def update_scroll_region(event):
-        canvas.configure(scrollregion=canvas.bbox("all"))
-    frame.bind("<Configure>", update_scroll_region)
+
+    # 更新滾動區域
+    show_info_frame.update_idletasks()
+    show_info_canvas.config(scrollregion=show_info_canvas.bbox("all"))
+    bind_canvas_scroll(show_info_canvas)
+
 
     # 設置確認按鈕
     def close_window():
         info_window.destroy()
-    tk.Button(info_window, text="確認", command=close_window, font=("Arial", 12), bg="#8fbc8f").pack(padx=10)
+    tk.Button(info_window, text="確認", command=close_window, font=("Arial", 12), bg="#8fbc8f").pack(padx=(10,10), pady=10)
+
+
+    # 更新視窗大小的邏輯
+    def update_window_size():
+        info_window.update_idletasks()
+        width = description_entry.winfo_width()
+        info_window.geometry(f"{width + 100}x600")
+    # 使用 after 延遲更新大小
+    info_window.after(100, update_window_size)
+
+
+
 
 def revise_info_window(result):
     """創建可修改文字的視窗"""
     # 創建新的 Toplevel 視窗
     info_window = tk.Toplevel()
-    info_window.title("修改信息")
-    info_window.geometry("400x400")
+    info_window.title("修改頁面")
 
-    # 設置一個標題
-    title_label = tk.Label(info_window, text="修改資料", font=("Arial", 14, 'bold'))
-    title_label.pack(pady=10)
+    # 設置滾動條和畫布
+    revise_info_canvas = tk.Canvas(info_window)
+    scroll_y = tk.Scrollbar(info_window, orient="vertical", command=revise_info_canvas.yview)
+    revise_info_canvas.config(yscrollcommand=scroll_y.set)
+    scroll_y.pack(side="right", fill="y")
+    revise_info_canvas.pack(side="left", fill="both", expand=True)
 
-    # 修改分類（text1），讓使用者可以編輯
-    tk.Label(info_window, text="分類:", font=("Arial", 10)).pack(pady=(5, 2), anchor="w")
-    category_entry = tk.Entry(info_window, font=("Arial", 10), width=30)
-    category_entry.insert(0, result.get('word_class', '未知分類'))  # 預設顯示原來的分類
-    category_entry.pack(pady=(0, 5))
+    revise_info_frame = tk.Frame(revise_info_canvas, bd=5, relief='raised')
+    revise_info_canvas.create_window((0, 0), window=revise_info_frame, anchor="nw")
 
-    # 修改描述（text2），讓使用者可以編輯
-    tk.Label(info_window, text="描述:", font=("Arial", 10)).pack(pady=(5, 2), anchor="w")
-    description_entry = tk.Entry(info_window, font=("Arial", 10), width=30)
-    description_entry.insert(0, result.get('description', '無描述'))  # 預設顯示原來的描述
-    description_entry.pack(pady=(0, 5))
+    # 轉出字典
+    description_data = eval(result['description'])
 
-    # 修改翻譯（text3），讓使用者可以編輯
-    tk.Label(info_window, text="翻譯:", font=("Arial", 10)).pack(pady=(5, 2), anchor="w")
-    translation_entry = tk.Entry(info_window, font=("Arial", 10), width=30)
-    translation_entry.insert(0, result.get('word_translation', ''))  # 預設顯示原來的翻譯
-    translation_entry.pack(pady=(0, 5))
 
-    # 修改範例句子（text4）
-    tk.Label(info_window, text="範例句子:", font=("Arial", 10)).pack(pady=(5, 2), anchor="w")
-    example_entry = tk.Entry(info_window, font=("Arial", 10), width=30)
-    example_entry.insert(0, result.get('example_sentence', ''))  # 預設顯示原來的範例句子
-    example_entry.pack(pady=(0, 5))
+    for block, data in description_data.items():
+        if isinstance(data, dict):
+            # 文字翻譯
+            if re.findall(r'^block', block):
+                word_class = data.get('word_class', '未知分類')
+                color = "#191970"
+                # 文字標籤
+                tk.Label(revise_info_frame, text=f"分類: {word_class}", font=("Arial", 12, 'bold'), anchor="w", fg="white", bg=color, bd=5, relief='raised').pack(fill="x")
+            else:
+                phrase = data.get('phrase')
+                color = '#ff0000'
+                tk.Label(revise_info_frame, text=f"片語: {phrase}", font=("Arial", 12, 'bold'), anchor="w", fg="white", bg=color, bd=5, relief='raised').pack(fill="x")
 
-    # 修改翻譯句子（text5）
-    tk.Label(info_window, text="翻譯句子:", font=("Arial", 10)).pack(pady=(5, 2), anchor="w")
-    example_translation_entry = tk.Entry(info_window, font=("Arial", 10), width=30)
-    example_translation_entry.insert(0, result.get('example_sentence_translation', ''))  # 預設顯示翻譯句子
-    example_translation_entry.pack(pady=(0, 5))
+            # 描述
+            tk.Label(revise_info_frame, text="描述:", font=("Arial", 12, 'bold'), wraplength=350, fg="white", bg=color, anchor='w', bd=5, relief='raised').pack(fill="x")
+            description_entry = tk.Text(revise_info_frame, font=("Arial", 12), height=4, bg="white", wrap="word", bd=0)
+            description_entry.insert("1.0", data.get('description', 'N/A'))
+            description_entry.config(state=tk.DISABLED)
+            description_entry.pack(fill='x')
+
+            # 翻譯
+            if re.findall(r'^block', block):
+                tk.Label(revise_info_frame, text="翻譯:", font=("Arial", 12, 'bold'), anchor="w", fg="white", bg=color, bd=5, relief='raised').pack(fill="x")
+                translation_entry = tk.Text(revise_info_frame, font=("Arial", 12), height=4, width=20, bg="white", wrap="word", bd=0)
+                translation_entry.insert("1.0", data.get('word_translation', 'N/A'))
+                translation_entry.config(state=tk.DISABLED)
+                translation_entry.pack(fill="x")
+
+            # 範例句子
+            tk.Label(revise_info_frame, text="範例句子:", font=("Arial", 12, 'bold'), anchor="w", fg="white", bg=color, bd=5, relief='raised').pack(fill="x")
+            example_entry = tk.Text(revise_info_frame, font=("Arial", 12), height=4, width=20, bg="white", wrap="word", bd=0)
+            example_entry.insert("1.0", data.get('example_sentence', 'N/A'))
+            example_entry.config(state=tk.DISABLED)
+            example_entry.pack(fill="x")
+
+            # 翻譯句子
+            tk.Label(revise_info_frame, text="翻譯句子:", font=("Arial", 12, 'bold'), anchor="w", fg="white", bg=color, bd=5, relief='raised').pack(fill="x")
+            example_translation_entry = tk.Text(revise_info_frame, font=("Arial", 12), height=4, width=20, bg="white", wrap="word", bd=0)
+            example_translation_entry.insert("1.0", data.get('example_sentence_translation', 'N/A'))
+            example_translation_entry.config(state=tk.DISABLED)
+            example_translation_entry.pack(pady=(0, 15), fill="x")
+
 
     # 儲存按鈕，更新文字
     def save_changes():
@@ -431,6 +475,20 @@ def revise_info_window(result):
     # 關閉視窗按鈕
     close_button = tk.Button(info_window, text="關閉", command=info_window.destroy, font=("Arial", 12), bg="#ff0000")
     close_button.pack(pady=10)
+
+    # 更新滾動區域
+    revise_info_frame.update_idletasks()
+    revise_info_canvas.config(scrollregion=revise_info_canvas.bbox("all"))
+    bind_canvas_scroll(revise_info_canvas)
+
+
+    # 更新視窗大小的邏輯
+    def update_window_size():
+        info_window.update_idletasks()
+        width = entry.winfo_width()
+        info_window.geometry(f"{width + 100}x600")
+    # 使用 after 延遲更新大小
+    info_window.after(100, update_window_size)
 
 
 
