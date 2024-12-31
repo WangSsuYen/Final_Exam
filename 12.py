@@ -105,9 +105,6 @@ def on_history_select(event):
         search_translation(selected_word)
 
 
-
-
-
 def _on_mouse_wheel(canvas, event):
     """根據滾輪事件滾動指定 Canvas"""
     # 判斷 event.delta 的正負，並根據操作系統調整
@@ -214,7 +211,7 @@ bind_canvas_scroll(canvas_2)
 
 
 
-# -------------------配置權重---------------------
+# ----------------------------配置權重----------------------------
 query_page.rowconfigure(1, weight=1)  # Canvas 框架垂直權重
 query_page.columnconfigure(1, weight=1)  # history_frame 水平權重
 query_page.columnconfigure(0, weight=1)  # input_frame 水平權重
@@ -225,7 +222,7 @@ canvas_frame.rowconfigure(0, weight=1)    # canvas frame 垂直權重
 
 
 
-# ---------------------------歷史紀錄頁面---------------------------
+# ---------------------------已學習單字頁籤---------------------------
 def on_tab_change(event):
     """當頁籤切換時執行動作"""
     selected_tab = event.widget.tab(event.widget.index("current"))["text"]
@@ -282,14 +279,18 @@ def refresh_words_page():
                 """處理按鈕點擊事件，刪除 Entry 內的文字"""
                 # 獲取 Entry 中的文字
                 text = entry_widget.get()
-                # 資料庫刪除操作
-                result = WordDatas.delete_word(db, text)
-                if result[0] == "Error":
-                    messagebox.showerror(result[0], result[1])
+                # 呼叫確認刪除視窗
+                ensure_answer = remove_info_window(text)
+                if ensure_answer:
+                    # 資料庫刪除操作
+                    result = WordDatas.delete_word(db, text)
+                    if result[0] == "Error":
+                        messagebox.showerror(result[0], result[1])
+                    else:
+                        messagebox.showinfo(result[0], result[1])
+                    refresh_words_page()
                 else:
-                    messagebox.showinfo(result[0], result[1])
-                # 更新頁面
-                refresh_words_page()
+                    messagebox.showinfo("取消操作", "刪除已取消")
 
 
             # 修改與刪除按鈕
@@ -308,6 +309,35 @@ def refresh_words_page():
     # 更新滾動區域
     content_frame.update_idletasks()
     word_contain.config(scrollregion=word_contain.bbox("all"))
+
+
+def remove_info_window(text):
+    """顯示確認刪除的視窗"""
+    info_window = tk.Toplevel()
+    info_window.title("ఠ_ఠ? 確認刪除")
+    info_window.geometry("300x150")
+    info_window.grab_set()  # 模態視窗，阻止操作主視窗
+
+    # 訊息
+    tk.Label(info_window, text=f"確定要刪除 : {text} 嗎?", font=("Arial", 16, 'bold'), anchor='center').pack(pady=(20, 10))
+
+    # 回傳結果變數
+    result = tk.BooleanVar(value=False)
+
+    def confirm_delete():
+        result.set(True)
+        info_window.destroy()
+
+    def cancel_delete():
+        result.set(False)
+        info_window.destroy()
+
+    # 按鈕
+    tk.Button(info_window, text="確定", font=("Arial", 12), bg="#ff0000", command=confirm_delete).pack(side="left", padx=20, pady=10)
+    tk.Button(info_window, text="取消", font=("Arial", 12), bg="#8fbc8f", command=cancel_delete).pack(side="right", padx=20, pady=10)
+
+    info_window.wait_window()  # 等待視窗關閉
+    return result.get()
 
 
 def show_info_window(result):
@@ -401,7 +431,7 @@ def revise_info_window(result):
     """創建可修改文字的視窗"""
     # 創建新的 Toplevel 視窗
     info_window = tk.Toplevel()
-    
+
 
     # 設置滾動條和畫布
     revise_info_canvas = tk.Canvas(info_window)
@@ -415,12 +445,15 @@ def revise_info_window(result):
 
     # 轉出字典
     description_data = eval(result['description'])
-    print(description_data)
 
+
+    # 儲存所有段落框架的字典
+    entry_mapping = {}  # 用於記錄每個小部件和資料字段的映射
+    updated_datas = {}
+    updated_datas['english_word'] = result['english_word']
 
     for block, data in description_data.items():
         if isinstance(data, dict):
-            # 文字翻譯
             if re.findall(r'^block', block):
                 word_class = data.get('word_class', '未知分類')
                 color = "#191970"
@@ -436,6 +469,7 @@ def revise_info_window(result):
             description_entry = tk.Text(revise_info_frame, font=("Arial", 12), height=4, bg="white", wrap="word", bd=0)
             description_entry.insert("1.0", data.get('description', 'N/A'))
             description_entry.pack(fill='x')
+            entry_mapping[description_entry] = {'block': block, 'field': 'description'}
 
             # 翻譯
             if re.findall(r'^block', block):
@@ -443,28 +477,40 @@ def revise_info_window(result):
                 translation_entry = tk.Text(revise_info_frame, font=("Arial", 12), height=4, bg="white", wrap="word", bd=0)
                 translation_entry.insert("1.0", data.get('word_translation', 'N/A'))
                 translation_entry.pack(fill="x")
+                entry_mapping[translation_entry] = {'block': block, 'field': 'word_translation'}
 
             # 範例句子
             tk.Label(revise_info_frame, text="範例句子:", font=("Arial", 12, 'bold'), anchor="w", fg="white", bg=color, bd=5, relief='raised').pack(fill="x")
             example_entry = tk.Text(revise_info_frame, font=("Arial", 12), height=4, bg="white", wrap="word", bd=0)
             example_entry.insert("1.0", data.get('example_sentence', 'N/A'))
             example_entry.pack(fill="x")
+            entry_mapping[example_entry] = {'block': block, 'field': 'example_sentence'}
 
             # 翻譯句子
             tk.Label(revise_info_frame, text="翻譯句子:", font=("Arial", 12, 'bold'), anchor="w", fg="white", bg=color, bd=5, relief='raised').pack(fill="x")
             example_translation_entry = tk.Text(revise_info_frame, font=("Arial", 12), height=4, bg="white", wrap="word", bd=0)
             example_translation_entry.insert("1.0", data.get('example_sentence_translation', 'N/A'))
             example_translation_entry.pack(pady=(0, 15), fill="x")
+            entry_mapping[example_translation_entry] = {'block': block, 'field': 'example_sentence_translation'}
 
 
     # 儲存按鈕，更新文字
     def save_changes():
-        result['word_class'] = category_entry.get()  # 更新分類
-        result['description'] = description_entry.get()  # 更新描述
-        result['word_translation'] = translation_entry.get()  # 更新翻譯
-        result['example_sentence'] = example_entry.get()  # 更新範例句子
-        result['example_sentence_translation'] = example_translation_entry.get()  # 更新翻譯句子
+        updated_data = {block: data.copy() for block, data in description_data.items()}
+        for widget, mapping in entry_mapping.items():
+            block = mapping['block']
+            field = mapping['field']
+            updated_data[block][field] = widget.get("1.0", "end-1c").strip()
+        updated_datas['description'] = updated_data
+        db_result = WordDatas.update_word(db, updated_datas)
+        if db_result[0] == "Success":
+            messagebox.showinfo(db_result[0], db_result[1])
+        else :
+            messagebox.showerror(db_result[0], db_result[1])
         info_window.destroy()  # 關閉視窗
+        refresh_words_page()  # 更新頁面
+
+
 
     save_button = tk.Button(info_window, text="儲存變更", command=save_changes, font=("Arial", 12), bg="#00ffff")
     save_button.pack(padx=(10,10), pady=(10,10))
@@ -483,7 +529,7 @@ def revise_info_window(result):
     def update_window_size():
         info_window.update_idletasks()
         width = description_entry.winfo_width()
-        info_window.geometry(f"{width + 150}x600")
+        info_window.geometry(f"{width + 130}x600")
     # 使用 after 延遲更新大小
     info_window.after(100, update_window_size)
     # 設定抬頭

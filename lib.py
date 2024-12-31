@@ -149,7 +149,7 @@ class WordDatas:
 
 
     @staticmethod
-    def update_word(db: str, english_word: str, updated_data: dict) -> List[str]:
+    def update_word(db: str, data: dict) -> List[str]:
         """
         更新單字資料單元。
 
@@ -158,20 +158,15 @@ class WordDatas:
         :param updated_data: 包含更新資料的字典，未提供的欄位將保持不變。
         :return: 狀態和訊息的列表，表示更新結果。
         """
-        if not WordDatas.search_data(db, english_word):
-            return ["Error", f"ఠ_ఠ? 找不到 {english_word}，無法更新。"]
-
-        # 更新資料時保留未修改的值
-        existing_data = WordDatas.search_data(db, english_word)
-        updated_fields = {"description": updated_data.get("description", existing_data["description"])}
+        if not WordDatas.search_data(db, data['english_word']):
+            return ["Error", f"ఠ_ఠ? 找不到 {data['english_word']}，無法更新。"]
 
         try:
             conn = sqlite3.connect(db)
             cur = conn.cursor()
-            cur.execute('''UPDATE Word SET description = ? WHERE english_word = ?;''',
-                        (updated_fields["description"], english_word))
+            cur.execute('''UPDATE Word SET description = ? WHERE english_word = ?;''',(f"{data["description"]}", data['english_word']))
             conn.commit()
-            return ["Success", f"٩(⚙ᴗ⚙)۶ {english_word} 已更新！"]
+            return ["Success", f"٩(⚙ᴗ⚙)۶ {data['english_word']} 已更新！"]
 
         except sqlite3.Error as error:
             return ["Error", f"ఠ_ఠ? 更新資料時發生錯誤：{error}"]
