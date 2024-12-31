@@ -164,7 +164,7 @@ class WordDatas:
         try:
             conn = sqlite3.connect(db)
             cur = conn.cursor()
-            cur.execute('''UPDATE Word SET description = ? WHERE english_word = ?;''',(f"{data["description"]}", data['english_word']))
+            cur.execute('''UPDATE Word SET description = ? WHERE english_word = ?;''',(f"{data['description']}", data['english_word']))
             conn.commit()
             return ["Success", f"٩(⚙ᴗ⚙)۶ {data['english_word']} 已更新！"]
 
